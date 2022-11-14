@@ -3,5 +3,5 @@ use tokio::net::UnixStream;
 
 #[async_trait]
 pub trait Connector {
-    async fn connect(&self) -> UnixStream;
+    async fn connect(&self) -> Option<UnixStream>;
 }

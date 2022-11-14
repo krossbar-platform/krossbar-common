@@ -1,28 +1,62 @@
-use bytes::BytesMut;
+use std::io::Result as IoResult;
 
-use crate::connector::Connector;
+use bytes::Bytes;
+use tokio::{
+    io::AsyncWriteExt,
+    net::UnixStream,
+    sync::mpsc::{self, Receiver},
+};
 
-pub enum ConnectionState {
-    Ready,
-    Connecting,
-}
+use crate::{connector::Connector, socket_reader::read_bson_from_socket, writer::Writer};
 
 pub struct Connection {
     /// Connector to initiate connection and reconnect if disconnected
     connector: Box<dyn Connector>,
-    /// Connection state to detect if reconnecting
-    state: ConnectionState,
-    /// Buffer to read incoming messages
-    read_buffer: BytesMut,
+    /// UDS connect to the counterparty
+    stream: UnixStream,
+    /// To receive data from a writer
+    write_rx: Receiver<Bytes>,
+    /// To return to users
+    writer: Writer,
 }
 
 impl Connection {
-    pub fn new(connector: Box<dyn Connector>) -> Self {
-        //let stream = connector.connect();
-        Self {
+    pub async fn new(connector: Box<dyn Connector>) -> Option<Self> {
+        let (sender, receiver) = mpsc::channel(32);
+        let stream = connector.connect().await?;
+
+        Some(Self {
             connector,
-            state: ConnectionState::Ready,
-            read_buffer: BytesMut::with_capacity(64),
+            stream,
+            write_rx: receiver,
+            writer: Writer::new(sender),
+        })
+    }
+
+    pub async fn read(&mut self) -> IoResult<Bytes> {
+        loop {
+            tokio::select! {
+                message = read_bson_from_socket(&mut self.stream, false) => {
+                    if message.is_ok() {
+                        return message
+                    } else {
+                        if let Some(stream) = self.connector.connect().await {
+                            self.stream = stream;
+                        }
+                    }
+                }
+                data = self.write_rx.recv() => {
+                    if data.is_some() &&  self.stream.write_all(&data.unwrap()).await.is_err() {
+                        if let Some(stream) = self.connector.connect().await {
+                            self.stream = stream;
+                        }
+                    }
+                }
+            }
         }
+    }
+
+    pub fn writer(&self) -> Writer {
+        self.writer.clone()
     }
 }
