@@ -8,10 +8,11 @@ async-trait = "0.1"
 bytes = "1.1"
 log = "0.4"
 anyhow = "1.0"
-tokio = { version = "1.19", features = [
-    "sync",
-    "io-util",
-    "net",
-    "time",
-    "macros",
-] }
+tokio = { version = "1.19", features = ["sync", "io-util", "net", "macros"] }
+
+
+[dev-dependencies]
+bson = "2.3"
+serde = "1.0"
+tempdir = "0.3"
+tokio = { version = "1.19", features = ["rt-multi-thread", "time"] }
