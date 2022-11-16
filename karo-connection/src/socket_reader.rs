@@ -1,10 +1,9 @@
-use std::io::{ErrorKind, Result as IoResult};
-
+use anyhow::{bail, Result};
 use bytes::{Bytes, BytesMut};
 use log::*;
 use tokio::{io::AsyncReadExt, net::UnixStream};
 
-pub async fn read_bson_from_socket(socket: &mut UnixStream, log: bool) -> IoResult<Bytes> {
+pub async fn read_bson_from_socket(socket: &mut UnixStream, log: bool) -> Result<Bytes> {
     let mut buffer = BytesMut::new();
 
     // First read Bson length
@@ -22,7 +21,7 @@ pub async fn read_bson_from_socket(socket: &mut UnixStream, log: bool) -> IoResu
                         trace!("Read zero bytes from a socket");
                     }
 
-                    return Err(ErrorKind::BrokenPipe.into());
+                    bail!("Socket closed");
                 }
 
                 // Descrease bytes by number of bytes already read
@@ -49,7 +48,7 @@ pub async fn read_bson_from_socket(socket: &mut UnixStream, log: bool) -> IoResu
                     err.to_string()
                 );
                 }
-                return Err(err);
+                bail!(err);
             }
         };
     }

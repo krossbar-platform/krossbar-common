@@ -1,5 +1,4 @@
-use std::io::Result as IoResult;
-
+use anyhow::Result;
 use bytes::Bytes;
 use tokio::{
     io::AsyncWriteExt,
@@ -21,11 +20,11 @@ pub struct Connection {
 }
 
 impl Connection {
-    pub async fn new(connector: Box<dyn Connector>) -> Option<Self> {
+    pub async fn new(connector: Box<dyn Connector>) -> Result<Self> {
         let (sender, receiver) = mpsc::channel(32);
         let stream = connector.connect().await?;
 
-        Some(Self {
+        Ok(Self {
             connector,
             stream,
             write_rx: receiver,
@@ -33,23 +32,19 @@ impl Connection {
         })
     }
 
-    pub async fn read(&mut self) -> IoResult<Bytes> {
+    pub async fn read(&mut self) -> Result<Bytes> {
         loop {
             tokio::select! {
                 message = read_bson_from_socket(&mut self.stream, false) => {
                     if message.is_ok() {
                         return message
                     } else {
-                        if let Some(stream) = self.connector.connect().await {
-                            self.stream = stream;
-                        }
+                        self.stream = self.connector.connect().await?;
                     }
                 }
                 data = self.write_rx.recv() => {
                     if data.is_some() &&  self.stream.write_all(&data.unwrap()).await.is_err() {
-                        if let Some(stream) = self.connector.connect().await {
-                            self.stream = stream;
-                        }
+                        self.stream = self.connector.connect().await?;
                     }
                 }
             }
