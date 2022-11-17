@@ -1,26 +1,25 @@
 use anyhow::Result;
 use bytes::Bytes;
 use tokio::{
-    io::AsyncWriteExt,
-    net::UnixStream,
+    io::{AsyncReadExt, AsyncWriteExt},
     sync::mpsc::{self, Receiver},
 };
 
 use crate::{connector::Connector, socket_reader::read_bson_from_socket, writer::Writer};
 
-pub struct Connection {
+pub struct Connection<S: AsyncReadExt + AsyncWriteExt> {
     /// Connector to initiate connection and reconnect if disconnected
-    connector: Box<dyn Connector>,
+    connector: Box<dyn Connector<S>>,
     /// UDS connect to the counterparty
-    stream: UnixStream,
+    stream: S,
     /// To receive data from a writer
     write_rx: Receiver<Bytes>,
     /// To return to users
     writer: Writer,
 }
 
-impl Connection {
-    pub async fn new(connector: Box<dyn Connector>) -> Result<Self> {
+impl<S: AsyncReadExt + AsyncWriteExt + Unpin> Connection<S> {
+    pub async fn new(connector: Box<dyn Connector<S>>) -> Result<Self> {
         let (sender, receiver) = mpsc::channel(32);
         let stream = connector.connect().await?;
 

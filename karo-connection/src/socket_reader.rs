@@ -1,9 +1,12 @@
 use anyhow::{bail, Result};
 use bytes::{Bytes, BytesMut};
 use log::*;
-use tokio::{io::AsyncReadExt, net::UnixStream};
+use tokio::io::AsyncReadExt;
 
-pub async fn read_bson_from_socket(socket: &mut UnixStream, log: bool) -> Result<Bytes> {
+pub async fn read_bson_from_socket<S: AsyncReadExt + Unpin>(
+    socket: &mut S,
+    log: bool,
+) -> Result<Bytes> {
     let mut buffer = BytesMut::new();
 
     // First read Bson length

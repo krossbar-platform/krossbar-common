@@ -1,8 +1,8 @@
 use anyhow::Result;
 use async_trait::async_trait;
-use tokio::net::UnixStream;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 #[async_trait]
-pub trait Connector {
-    async fn connect(&self) -> Result<UnixStream>;
+pub trait Connector<S: AsyncReadExt + AsyncWriteExt> {
+    async fn connect(&self) -> Result<S>;
 }
