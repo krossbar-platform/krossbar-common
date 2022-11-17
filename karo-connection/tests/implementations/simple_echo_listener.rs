@@ -26,10 +26,16 @@ impl SimpleEchoListener {
                             Self::start_echo(stream).await
                         }
                     }
-                    _ = restart_rx.recv() => {
-                        println!("Restart request");
-                        drop(listener);
-                        listener = UnixListener::bind(&socket_path).unwrap();
+                    restart = restart_rx.recv() => {
+                        if restart.is_some() {
+                            println!("Restart request");
+                            drop(listener);
+                            let _ = std::fs::remove_file(&socket_path);
+
+                            listener = UnixListener::bind(&socket_path).unwrap();
+                        } else {
+                            eprintln!("Invalid message from restart socket");
+                        }
                     }
                 }
             }
