@@ -1,6 +1,7 @@
 use bson::Bson;
 use bytes::Bytes;
 use karo_connection::connection::Connection;
+use log::*;
 use tokio::net::UnixStream;
 
 use super::simple_connector::SimpleConnector;
@@ -18,11 +19,11 @@ impl SimpleEchoSender {
     }
 
     pub async fn send_receive(&mut self, message: &Bson) -> Bson {
-        println!("Sending data: {:?}", message);
+        trace!("Sending data: {:?}", message);
         let send_data = Bytes::from(bson::to_raw_document_buf(message).unwrap().into_bytes());
         self.connection.writer().write(send_data).await.unwrap();
 
-        println!("Receiving data");
+        trace!("Receiving data");
         let receive_data = self.connection.read().await.unwrap();
         bson::from_slice(&receive_data).unwrap()
     }

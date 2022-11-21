@@ -1,3 +1,4 @@
+use log::*;
 use tokio::{
     io::AsyncWriteExt,
     net::{UnixListener, UnixStream},
@@ -22,19 +23,20 @@ impl SimpleEchoListener {
                 tokio::select! {
                     connection = listener.accept() => {
                         if let Ok((stream, addr)) = connection {
-                            println!("New connection from {:?}", addr);
+                            debug!("New connection from {:?}", addr);
                             Self::start_echo(stream).await
                         }
                     }
                     restart = restart_rx.recv() => {
                         if restart.is_some() {
-                            println!("Restart request");
+                            debug!("Restart request");
                             drop(listener);
                             let _ = std::fs::remove_file(&socket_path);
 
                             listener = UnixListener::bind(&socket_path).unwrap();
                         } else {
-                            eprintln!("Invalid message from restart socket");
+                            info!("Listener dropped. Shutting down");
+                            break;
                         }
                     }
                 }
@@ -48,7 +50,6 @@ impl SimpleEchoListener {
         tokio::spawn(async move {
             loop {
                 if let Ok(data) = read_bson_from_socket(&mut stream, true).await {
-                    println!("New Bson");
                     let _ = stream.write_all(&data).await;
                 } else {
                     break;

@@ -1,4 +1,5 @@
 use bson::bson;
+use log::*;
 use tempdir::TempDir;
 
 mod implementations;
@@ -9,6 +10,10 @@ use implementations::{
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_reconnect() {
+    let _ = pretty_env_logger::formatted_builder()
+        .filter_level(log::LevelFilter::Trace)
+        .try_init();
+
     let socket_dir = TempDir::new("karo_hub_socket_dir").expect("Failed to create socket tempdir");
     let socket_path: String = socket_dir
         .path()
@@ -18,7 +23,7 @@ async fn test_reconnect() {
         .unwrap()
         .into();
 
-    let _ = SimpleEchoListener::new(&socket_path).await;
+    let _listener = SimpleEchoListener::new(&socket_path).await;
     let mut connection = SimpleEchoSender::new(&socket_path).await;
 
     let bson = bson!({
@@ -26,5 +31,8 @@ async fn test_reconnect() {
     });
 
     let response = connection.send_receive(&bson).await;
+
+    debug!("Sent data: {}, received data: {}", bson, response);
+
     assert_eq!(response, bson);
 }
