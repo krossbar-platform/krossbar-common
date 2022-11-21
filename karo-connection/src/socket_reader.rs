@@ -3,6 +3,8 @@ use bytes::{BufMut, Bytes, BytesMut};
 use log::*;
 use tokio::io::AsyncReadExt;
 
+/// Read raw Bson from the [socket]
+/// **log** can be used for debugging. **Off** by default
 pub async fn read_bson_from_socket<S: AsyncReadExt + Unpin>(
     socket: &mut S,
     log: bool,
@@ -62,6 +64,8 @@ pub async fn read_bson_from_socket<S: AsyncReadExt + Unpin>(
     }
 }
 
+/// Read raw Bson len from the [socket] (4 LE bytes at the beginning of the packet)
+/// **log** can be used for debugging. **Off** by default
 async fn read_packet_len<S: AsyncReadExt + Unpin>(socket: &mut S, log: bool) -> Result<u32> {
     socket
         .read_u32_le()
