@@ -4,7 +4,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 use tokio::{net::UnixStream, time::sleep};
 
-use karo_connection::connector::Connector;
+use karo_common_connection::connector::Connector;
 
 const SLEEP_DURATION: Duration = Duration::from_millis(10);
 

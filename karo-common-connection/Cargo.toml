@@ -1,5 +1,5 @@
 [package]
-name = "karo-connection"
+name = "karo-common-connection"
 version = "0.1.0"
 edition = "2021"
 

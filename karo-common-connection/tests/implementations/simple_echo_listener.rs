@@ -5,7 +5,7 @@ use tokio::{
     sync::mpsc::{self, Sender},
 };
 
-use karo_connection::socket_reader::read_bson_from_socket;
+use karo_common_connection::socket_reader::read_bson_from_socket;
 
 pub struct SimpleEchoListener {
     restart_tx: Sender<()>,

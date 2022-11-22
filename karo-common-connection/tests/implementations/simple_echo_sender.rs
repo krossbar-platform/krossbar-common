@@ -1,5 +1,5 @@
 use bson::Bson;
-use karo_connection::connection::Connection;
+use karo_common_connection::connection::Connection;
 use log::*;
 use tokio::net::UnixStream;
 
