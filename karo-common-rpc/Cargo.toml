@@ -1,0 +1,8 @@
+[package]
+name = "karo-common-rpc"
+version = "0.1.0"
+edition = "2021"
+
+
+[dependencies]
+karo-common-connection = { path = "../karo-common-connection" }
