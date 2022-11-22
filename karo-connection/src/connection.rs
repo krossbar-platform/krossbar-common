@@ -50,7 +50,7 @@ impl<S: AsyncReadExt + AsyncWriteExt + Unpin> Connection<S> {
     async fn read(&mut self) -> Result<Bytes> {
         loop {
             tokio::select! {
-                message = read_bson_from_socket(&mut self.stream, false) => {
+                message = read_bson_from_socket(&mut self.stream, true) => {
                     if message.is_ok() {
                         return message
                     } else {

@@ -23,7 +23,7 @@ async fn test_reconnect() {
         .unwrap()
         .into();
 
-    let _listener = SimpleEchoListener::new(&socket_path).await;
+    let mut listener = SimpleEchoListener::new(&socket_path).await;
     let mut connection = SimpleEchoSender::new(&socket_path).await;
 
     let bson = bson!({
@@ -33,6 +33,14 @@ async fn test_reconnect() {
     let response = connection.send_receive(&bson).await;
 
     debug!("Sent data: {}, received data: {}", bson, response);
+
+    assert_eq!(response, bson);
+
+    listener.restart().await;
+
+    let response = connection.send_receive(&bson).await;
+
+    debug!("2 Sent data: {}, received data: {}", bson, response);
 
     assert_eq!(response, bson);
 }
