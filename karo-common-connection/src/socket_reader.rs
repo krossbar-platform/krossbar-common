@@ -3,7 +3,7 @@ use bytes::{BufMut, Bytes, BytesMut};
 use log::*;
 use tokio::io::AsyncReadExt;
 
-/// Read raw Bson from the [socket]
+/// Read raw Bson from the **socket**
 /// **log** can be used for debugging. **Off** by default
 pub async fn read_bson_from_socket<S: AsyncReadExt + Unpin>(
     socket: &mut S,
