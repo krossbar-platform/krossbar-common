@@ -5,4 +5,9 @@ edition = "2021"
 
 
 [dependencies]
+anyhow = "1.0"
+bson = "2.3"
+serde = "1.0"
+tokio = { version = "1.19", features = ["sync", "io-util", "net"] }
+
 karo-common-connection = { path = "../karo-common-connection" }
