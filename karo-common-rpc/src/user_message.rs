@@ -40,6 +40,10 @@ impl UserMessageHandle {
         }
     }
 
+    pub fn id(&self) -> u64 {
+        self.message.seq_no
+    }
+
     pub fn body(&self) -> &Bson {
         &self.message.body
     }

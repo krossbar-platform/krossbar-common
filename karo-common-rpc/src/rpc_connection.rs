@@ -1,18 +1,18 @@
 use anyhow::{Context, Result};
 use bson::{self, Bson};
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::{io::{AsyncReadExt, AsyncWriteExt}, sync::mpsc::Receiver};
 
 use karo_common_connection::{connection::Connection, connector::Connector};
 
 use crate::{
     message::{Message, MessageType},
-    user_message::UserMessageHandle,
+    user_message::UserMessageHandle, call_registry::CallRegistry,
 };
 
-// TODO: Integrate call registry!!!
 pub struct RpcConnection<S: AsyncReadExt + AsyncWriteExt> {
     seq_no_counter: u64,
     connection: Connection<S>,
+    call_registry: CallRegistry,
 }
 
 impl<S: AsyncReadExt + AsyncWriteExt + Unpin> RpcConnection<S> {
@@ -21,6 +21,7 @@ impl<S: AsyncReadExt + AsyncWriteExt + Unpin> RpcConnection<S> {
         Ok(Self {
             seq_no_counter: 0,
             connection: Connection::new(connector).await?,
+            call_registry: CallRegistry::new(),
         })
     }
 
@@ -42,7 +43,7 @@ impl<S: AsyncReadExt + AsyncWriteExt + Unpin> RpcConnection<S> {
                     ))
                 }
                 MessageType::Message => return Ok(UserMessageHandle::new(incoming_message)),
-                MessageType::Response => println!("Handle response!!!!!!!"),
+                MessageType::Response => self.call_registry.resolve(UserMessageHandle::new(incoming_message)).await
             }
         }
     }
@@ -56,11 +57,19 @@ impl<S: AsyncReadExt + AsyncWriteExt + Unpin> RpcConnection<S> {
     }
 
     /// Send a call
-    pub async fn call(&mut self, body: Bson) -> Result<()> {
+    pub async fn call(&mut self, body: Bson, subscription: bool) -> Result<Receiver<UserMessageHandle>> {
         let message = Message::new_call(self.seq_no(), body);
-        let message = bson::to_bson(&message).context("Failed to serialise a call")?;
+        let bson = bson::to_bson(&message).context("Failed to serialise a call")?;
 
-        self.connection.writer().write_bson(&message).await
+        let rx = self.call_registry.register_call(message, subscription).context("Failed to register a call")?;
+
+        self.connection.writer().write_bson(&bson).await.context("Failed to write outgoing message")?;
+        Ok(rx)
+    }
+
+    /// Reset all existing calls on reconnect
+    pub fn reset(&mut self) {
+        self.call_registry.clear()
     }
 
     fn seq_no(&mut self) -> u64 {
