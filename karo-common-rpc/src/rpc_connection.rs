@@ -1,27 +1,48 @@
+use std::sync::Arc;
+
 use anyhow::{Context, Result};
-use bson::{self, Bson};
-use tokio::{io::{AsyncReadExt, AsyncWriteExt}, sync::mpsc::Receiver};
+use bson;
+use tokio::{
+    io::{AsyncReadExt, AsyncWriteExt},
+    sync::Mutex,
+};
 
 use karo_common_connection::{connection::Connection, connector::Connector};
 
 use crate::{
+    call_registry::CallRegistry,
     message::{Message, MessageType},
-    user_message::UserMessageHandle, call_registry::CallRegistry,
+    rpc_connector::RpcConnector,
+    rpc_sender::RpcSender,
+    user_message::UserMessageHandle,
 };
 
+/// RPC connection handle.
+/// Uses [CallRegistry] to account user calls.
+/// Uses [Connector] wrapper to resubscribe if reconnected
 pub struct RpcConnection<S: AsyncReadExt + AsyncWriteExt> {
-    seq_no_counter: u64,
+    /// Socket connection to send/receive data
     connection: Connection<S>,
-    call_registry: CallRegistry,
+    /// Common sender, which can be used to clone and return to a user
+    sender: RpcSender,
+    /// Call registry, which is used to record calls, resubscribe on reconnection and send user responses
+    call_registry: Arc<Mutex<CallRegistry>>,
 }
 
-impl<S: AsyncReadExt + AsyncWriteExt + Unpin> RpcConnection<S> {
+impl<S: AsyncReadExt + AsyncWriteExt + Unpin + Send + 'static> RpcConnection<S> {
     /// Contructor. Uses [Connector] to connect to the peer
     pub async fn new(connector: Box<dyn Connector<S>>) -> Result<Self> {
+        let call_registry = Arc::new(Mutex::new(CallRegistry::new()));
+
+        let rpc_connector = RpcConnector::new(connector, call_registry.clone());
+
+        let connection = Connection::new(Box::new(rpc_connector)).await?;
+        let sender = RpcSender::new(connection.writer(), call_registry.clone());
+
         Ok(Self {
-            seq_no_counter: 0,
-            connection: Connection::new(connector).await?,
-            call_registry: CallRegistry::new(),
+            connection,
+            sender,
+            call_registry,
         })
     }
 
@@ -43,37 +64,23 @@ impl<S: AsyncReadExt + AsyncWriteExt + Unpin> RpcConnection<S> {
                     ))
                 }
                 MessageType::Message => return Ok(UserMessageHandle::new(incoming_message)),
-                MessageType::Response => self.call_registry.resolve(UserMessageHandle::new(incoming_message)).await
+                MessageType::Response => {
+                    self.call_registry
+                        .lock()
+                        .await
+                        .resolve(UserMessageHandle::new(incoming_message))
+                        .await
+                }
             }
         }
     }
 
-    /// Send a one-way message
-    pub async fn send(&mut self, body: Bson) -> Result<()> {
-        let message = Message::new(self.seq_no(), body);
-        let message = bson::to_bson(&message).context("Failed to serialise a message")?;
-
-        self.connection.writer().write_bson(&message).await
-    }
-
-    /// Send a call
-    pub async fn call(&mut self, body: Bson, subscription: bool) -> Result<Receiver<UserMessageHandle>> {
-        let message = Message::new_call(self.seq_no(), body);
-        let bson = bson::to_bson(&message).context("Failed to serialise a call")?;
-
-        let rx = self.call_registry.register_call(message, subscription).context("Failed to register a call")?;
-
-        self.connection.writer().write_bson(&bson).await.context("Failed to write outgoing message")?;
-        Ok(rx)
+    pub fn sender(&self) -> RpcSender {
+        self.sender.clone()
     }
 
     /// Reset all existing calls on reconnect
-    pub fn reset(&mut self) {
-        self.call_registry.clear()
-    }
-
-    fn seq_no(&mut self) -> u64 {
-        self.seq_no_counter += 1;
-        self.seq_no_counter
+    pub async fn reset(&mut self) {
+        self.call_registry.lock().await.clear()
     }
 }

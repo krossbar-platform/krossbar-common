@@ -1,10 +1,12 @@
-use std::{
-    collections::HashMap,
-};
+use std::collections::HashMap;
 
-use anyhow::{Result};
+use anyhow::{Context, Result};
+use bson;
 use log::*;
-use tokio::{sync::mpsc::{self, Receiver, Sender}};
+use tokio::{
+    io::AsyncWriteExt,
+    sync::mpsc::{self, Receiver, Sender},
+};
 
 use crate::{message::Message, user_message::UserMessageHandle};
 
@@ -12,6 +14,8 @@ use crate::{message::Message, user_message::UserMessageHandle};
 struct Call {
     /// If we're gonna have multiple replies to the call (for instance in case of subscriptions)
     subscription: bool,
+    /// Message to resend on resubscription request
+    message: Message,
     /// Use callback TX
     callback: Sender<UserMessageHandle>,
 }
@@ -36,14 +40,11 @@ impl CallRegistry {
     pub fn register_call(
         &mut self,
         message: Message,
-        subscription: bool
+        subscription: bool,
     ) -> Result<Receiver<UserMessageHandle>> {
         let (tx, rx) = mpsc::channel(16);
 
-        trace!(
-            "Registerng a call: {:?}",
-            message
-        );
+        trace!("Registering a call: {:?}", message);
 
         if self.calls.contains_key(&message.seq_no) {
             panic!("Multiple calls with the same ID: {}", message.seq_no);
@@ -53,6 +54,7 @@ impl CallRegistry {
             message.seq_no,
             Call {
                 subscription,
+                message,
                 callback: tx,
             },
         );
@@ -69,7 +71,11 @@ impl CallRegistry {
                 trace!("Found a call with id: {}", seq_no);
 
                 if let Err(mess) = call.callback.send(handle).await {
-                    error!("Failed to write response message {} into a channel: {:?}", seq_no, mess.to_string());
+                    error!(
+                        "Failed to write response message {} into a channel: {:?}",
+                        seq_no,
+                        mess.to_string()
+                    );
                     return;
                 }
 
@@ -83,6 +89,28 @@ impl CallRegistry {
                 warn!("Unknown client response: {:?}", handle.body());
             }
         }
+    }
+
+    pub async fn resend_subscriptions<S: AsyncWriteExt + Unpin>(
+        &self,
+        socket: &mut S,
+    ) -> Result<()> {
+        for message in self.calls.values() {
+            if !message.subscription {
+                continue;
+            }
+
+            let bytes = bson::to_raw_document_buf(&message.message)
+                .map(|data| data.into_bytes())
+                .context("Failed to serialize incoming Bson")?;
+
+            socket
+                .write_all(&bytes)
+                .await
+                .context("Failed to write outgoing message into the socket")?;
+        }
+
+        Ok(())
     }
 
     /// Reset all calls on reconnect

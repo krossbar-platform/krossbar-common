@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 use anyhow::{Context, Result};
 use bson::Bson;
 
@@ -55,7 +57,7 @@ impl UserMessageHandle {
     pub async fn reply(&mut self, reply: Bson) -> Result<()> {
         // The writer is Some only if we have a call, and it's the only case when we can reply
         if let Some(writer) = &mut self.response_writer {
-            let response = self.message.make_response(reply);
+            let response = self.message.make_response(reply)?;
             let bson = bson::to_bson(&response).context("Failed to serialize a reply")?;
 
             writer
@@ -63,13 +65,23 @@ impl UserMessageHandle {
                 .await
                 .context("Failed to write response into a writer")?;
 
-            // Clear the writer to record response
+            // To not panic into the destructor
             self.needs_response = false;
 
             Ok(())
         } else {
             panic!("Message is not a call, and can't be replied to")
         }
+    }
+}
+
+impl Debug for UserMessageHandle {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Message {{ need_response: {}, message: {:?} }}",
+            self.needs_response, self.message
+        )
     }
 }
 

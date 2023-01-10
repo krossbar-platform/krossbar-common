@@ -1,3 +1,4 @@
+use anyhow::{ensure, Result};
 use bson::Bson;
 use serde::{Deserialize, Serialize};
 
@@ -33,16 +34,16 @@ impl Message {
         }
     }
 
-    pub fn make_response(&self, body: Bson) -> Self {
-        assert!(
+    pub fn make_response(&self, body: Bson) -> Result<Self> {
+        ensure!(
             self.message_type == MessageType::Call,
             "Responses should be onde only out of a call"
         );
 
-        Self {
+        Ok(Self {
             seq_no: self.seq_no,
             body,
             message_type: MessageType::Response,
-        }
+        })
     }
 }
