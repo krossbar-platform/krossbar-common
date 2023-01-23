@@ -56,6 +56,12 @@ impl Message {
     }
 }
 
+impl Into<Bson> for Message {
+    fn into(self) -> Bson {
+        bson::to_bson(&self).unwrap()
+    }
+}
+
 impl Display for Message {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
