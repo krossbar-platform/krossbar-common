@@ -17,7 +17,7 @@ impl SimpleEchoListener {
 
         tokio::spawn(async move {
             let connector = Box::new(ListenConnector::new(&socket_path));
-            let mut rpc_client = RpcConnection::new(connector).await.unwrap();
+            let mut rpc_client = RpcConnection::new(connector, true).await.unwrap();
 
             loop {
                 tokio::select! {
@@ -30,7 +30,7 @@ impl SimpleEchoListener {
                             drop(rpc_client);
 
                             let connector = Box::new(ListenConnector::new(&socket_path));
-                            rpc_client = RpcConnection::new(connector).await.unwrap();
+                            rpc_client = RpcConnection::new(connector, true).await.unwrap();
                         } else {
                             info!("Listener dropped. Shutting down");
                             break;

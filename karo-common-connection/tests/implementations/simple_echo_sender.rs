@@ -12,7 +12,7 @@ pub struct SimpleEchoSender {
 impl SimpleEchoSender {
     pub async fn new(socket_path: &str) -> Self {
         let connector = SimpleConnector::new(socket_path);
-        let connection = Connection::new(Box::new(connector)).await.unwrap();
+        let connection = Connection::new(Box::new(connector), true).await.unwrap();
 
         Self { connection }
     }

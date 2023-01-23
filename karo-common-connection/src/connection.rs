@@ -20,11 +20,13 @@ pub struct Connection<S: AsyncReadExt + AsyncWriteExt> {
     write_rx: Receiver<Bytes>,
     /// To return to users to write outgoing messages
     writer: Writer,
+    /// Reconnect if connection dropped
+    reconnect: bool,
 }
 
 impl<S: AsyncReadExt + AsyncWriteExt + Unpin> Connection<S> {
     /// Contructor. Uses [Connector] to connect to the peer
-    pub async fn new(connector: Box<dyn Connector<S>>) -> Result<Self> {
+    pub async fn new(connector: Box<dyn Connector<S>>, reconnect: bool) -> Result<Self> {
         let (sender, receiver) = mpsc::channel(32);
         let stream = connector.connect().await?;
 
@@ -33,6 +35,7 @@ impl<S: AsyncReadExt + AsyncWriteExt + Unpin> Connection<S> {
             stream,
             write_rx: receiver,
             writer: Writer::new(sender),
+            reconnect,
         })
     }
 
@@ -53,12 +56,12 @@ impl<S: AsyncReadExt + AsyncWriteExt + Unpin> Connection<S> {
                 message = read_bson_from_socket(&mut self.stream, false) => {
                     if message.is_ok() {
                         return message
-                    } else {
+                    } else if self.reconnect {
                         self.stream = self.connector.connect().await?;
                     }
                 }
                 data = self.write_rx.recv() => {
-                    if data.is_some() &&  self.stream.write_all(&data.unwrap()).await.is_err() {
+                    if data.is_some() && self.stream.write_all(&data.unwrap()).await.is_err() && self.reconnect {
                         self.stream = self.connector.connect().await?;
                     }
                 }

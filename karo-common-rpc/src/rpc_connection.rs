@@ -31,12 +31,12 @@ pub struct RpcConnection<S: AsyncReadExt + AsyncWriteExt> {
 
 impl<S: AsyncReadExt + AsyncWriteExt + Unpin + Send + 'static> RpcConnection<S> {
     /// Contructor. Uses [Connector] to connect to the peer
-    pub async fn new(connector: Box<dyn Connector<S>>) -> Result<Self> {
+    pub async fn new(connector: Box<dyn Connector<S>>, reconnect: bool) -> Result<Self> {
         let call_registry = Arc::new(Mutex::new(CallRegistry::new()));
 
         let rpc_connector = RpcConnector::new(connector, call_registry.clone());
 
-        let connection = Connection::new(Box::new(rpc_connector)).await?;
+        let connection = Connection::new(Box::new(rpc_connector), reconnect).await?;
         let sender = RpcSender::new(connection.writer(), call_registry.clone());
 
         Ok(Self {
