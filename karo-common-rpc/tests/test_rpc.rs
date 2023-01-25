@@ -9,7 +9,7 @@ use implementations::{rpc_echo_listener::SimpleEchoListener, rpc_echo_sender::Si
 #[tokio::test(flavor = "multi_thread")]
 async fn test_rpc_calls() {
     let _ = pretty_env_logger::formatted_builder()
-        .filter_level(log::LevelFilter::Trace)
+        .filter_level(log::LevelFilter::Debug)
         .try_init();
 
     let socket_dir = TempDir::new("karo_hub_socket_dir").expect("Failed to create socket tempdir");
@@ -64,7 +64,7 @@ async fn test_rpc_calls() {
 #[tokio::test(flavor = "multi_thread")]
 async fn test_rpc_reconnect() {
     let _ = pretty_env_logger::formatted_builder()
-        .filter_level(log::LevelFilter::Trace)
+        .filter_level(log::LevelFilter::Debug)
         .try_init();
 
     let socket_dir = TempDir::new("karo_hub_socket_dir").expect("Failed to create socket tempdir");

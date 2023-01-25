@@ -6,7 +6,10 @@ use std::sync::{
 use anyhow::{Context, Ok, Result};
 use bson::Bson;
 use log::*;
-use tokio::sync::{mpsc, Mutex};
+use tokio::{
+    net::UnixStream,
+    sync::{mpsc, Mutex},
+};
 
 use karo_common_connection::writer::Writer;
 
@@ -30,12 +33,22 @@ impl RpcSender {
 
     /// Send a one-way message
     pub async fn send(&mut self, body: Bson) -> Result<()> {
-        let message = Message::new(self.seq_no(), body);
+        let message = Message::new(self.seq_no(), body, false);
         trace!("Sending new message: {:?}", message);
 
         let message = bson::to_bson(&message).context("Failed to serialise a message")?;
 
         self.socket_writer.write_bson(&message).await
+    }
+
+    /// Send a one-way message
+    pub async fn send_fd(&mut self, body: Bson, stream: UnixStream) -> Result<()> {
+        let message = Message::new(self.seq_no(), body, true);
+        trace!("Sending new message: {:?}", message);
+
+        let message = bson::to_bson(&message).context("Failed to serialise a message")?;
+
+        self.socket_writer.write_bson_fd(&message, stream).await
     }
 
     /// Send a call
@@ -57,7 +70,7 @@ impl RpcSender {
         body: Bson,
         subscription: bool,
     ) -> Result<mpsc::Receiver<UserMessageHandle>> {
-        let message = Message::new_call(self.seq_no(), body);
+        let message = Message::new_call(self.seq_no(), body, false);
         trace!("Sending new call: {:?}", message);
 
         let bson = bson::to_bson(&message).context("Failed to serialise a call")?;

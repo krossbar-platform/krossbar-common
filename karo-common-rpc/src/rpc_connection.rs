@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use anyhow::{Context, Result};
 use bson;
+use log::*;
 use tokio::sync::Mutex;
 
 use karo_common_connection::{connection::Connection, connector::Connector};
@@ -53,6 +54,15 @@ impl RpcConnection {
             let incoming_message = bson::from_bson::<Message>(incoming_bson)
                 .context("Failed to deserialize incoming message")?;
 
+            // Sender sent a file descriptor right after the message. Let's read it
+            let optional_fd = if incoming_message.has_fd {
+                debug!("Received a message with a file descriptor. Trying to read the descriptor");
+
+                Some(self.connection.read_fd().await?)
+            } else {
+                None
+            };
+
             match incoming_message.message_type {
                 MessageType::Call => {
                     return Ok(UserMessageHandle::new_call(
@@ -60,12 +70,14 @@ impl RpcConnection {
                         self.connection.writer(),
                     ))
                 }
-                MessageType::Message => return Ok(UserMessageHandle::new(incoming_message)),
+                MessageType::Message => {
+                    return Ok(UserMessageHandle::new(incoming_message, optional_fd))
+                }
                 MessageType::Response => {
                     self.call_registry
                         .lock()
                         .await
-                        .resolve(UserMessageHandle::new(incoming_message))
+                        .resolve(UserMessageHandle::new(incoming_message, optional_fd))
                         .await
                 }
             }

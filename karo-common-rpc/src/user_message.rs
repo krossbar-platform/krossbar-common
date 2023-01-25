@@ -4,6 +4,7 @@ use anyhow::{Context, Result};
 use bson::Bson;
 
 use karo_common_connection::writer::Writer;
+use tokio::net::UnixStream;
 
 use crate::message::{Message, MessageType};
 
@@ -16,15 +17,18 @@ pub struct UserMessageHandle {
     response_writer: Option<Writer>,
     /// Incoming internal message body
     message: Message,
+    /// Optional file descriptor
+    fd: Option<UnixStream>,
 }
 
 impl UserMessageHandle {
     /// New one-way message
-    pub(crate) fn new(message: Message) -> Self {
+    pub(crate) fn new(message: Message, fd: Option<UnixStream>) -> Self {
         Self {
             needs_response: false,
             response_writer: None,
             message,
+            fd,
         }
     }
 
@@ -39,6 +43,7 @@ impl UserMessageHandle {
             needs_response: true,
             response_writer: Some(response_writer),
             message,
+            fd: None,
         }
     }
 
@@ -50,6 +55,10 @@ impl UserMessageHandle {
         &self.message.body
     }
 
+    pub fn take_fd(&mut self) -> Option<UnixStream> {
+        self.fd.take()
+    }
+
     pub fn is_call(&self) -> bool {
         self.message.message_type == MessageType::Call
     }
@@ -57,11 +66,31 @@ impl UserMessageHandle {
     pub async fn reply(&mut self, reply: Bson) -> Result<()> {
         // The writer is Some only if we have a call, and it's the only case when we can reply
         if let Some(writer) = &mut self.response_writer {
-            let response = self.message.make_response(reply)?;
+            let response = self.message.make_response(reply, false)?;
             let bson = bson::to_bson(&response).context("Failed to serialize a reply")?;
 
             writer
                 .write_bson(&bson)
+                .await
+                .context("Failed to write response into a writer")?;
+
+            // To not panic into the destructor
+            self.needs_response = false;
+
+            Ok(())
+        } else {
+            panic!("Message is not a call, and can't be replied to")
+        }
+    }
+
+    pub async fn reply_with_fd(&mut self, reply: Bson, stream: UnixStream) -> Result<()> {
+        // The writer is Some only if we have a call, and it's the only case when we can reply
+        if let Some(writer) = &mut self.response_writer {
+            let response = self.message.make_response(reply, true)?;
+            let bson = bson::to_bson(&response).context("Failed to serialize a reply")?;
+
+            writer
+                .write_bson_fd(&bson, stream)
                 .await
                 .context("Failed to write response into a writer")?;
 

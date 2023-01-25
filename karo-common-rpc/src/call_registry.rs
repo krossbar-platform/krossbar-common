@@ -36,6 +36,10 @@ impl CallRegistry {
 
     /// Register a call
     /// *persist* If the call will have multiple answers
+    ///
+    /// *subscription* if we want to keep the call end resubscribe on reconnection
+    /// *read_fd* if client await a file descriptor right after the response
+    ///
     /// *Returns* Receiver for a caller
     pub fn register_call(
         &mut self,
