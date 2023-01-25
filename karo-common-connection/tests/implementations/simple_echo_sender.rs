@@ -1,6 +1,7 @@
 use bson::Bson;
 use karo_common_connection::connection::Connection;
 use log::*;
+use tokio::net::UnixStream;
 
 use super::simple_connector::SimpleConnector;
 
@@ -23,5 +24,25 @@ impl SimpleEchoSender {
 
         trace!("Receiving data");
         self.connection.read_bson().await.unwrap()
+    }
+
+    pub async fn send_receive_fd(
+        &mut self,
+        message: &Bson,
+        stream: UnixStream,
+    ) -> (Bson, UnixStream) {
+        trace!("Sending data: {:?}", message);
+
+        self.connection
+            .writer()
+            .write_bson_fd(message, stream)
+            .await
+            .unwrap();
+
+        trace!("Receiving data");
+        (
+            self.connection.read_bson().await.unwrap(),
+            self.connection.read_fd().await.unwrap(),
+        )
     }
 }
