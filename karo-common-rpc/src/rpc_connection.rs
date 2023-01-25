@@ -2,10 +2,7 @@ use std::sync::Arc;
 
 use anyhow::{Context, Result};
 use bson;
-use tokio::{
-    io::{AsyncReadExt, AsyncWriteExt},
-    sync::Mutex,
-};
+use tokio::sync::Mutex;
 
 use karo_common_connection::{connection::Connection, connector::Connector};
 
@@ -20,18 +17,18 @@ use crate::{
 /// RPC connection handle.
 /// Uses [CallRegistry] to account user calls.
 /// Uses [Connector] wrapper to resubscribe if reconnected
-pub struct RpcConnection<S: AsyncReadExt + AsyncWriteExt> {
+pub struct RpcConnection {
     /// Socket connection to send/receive data
-    connection: Connection<S>,
+    connection: Connection,
     /// Common sender, which can be used to clone and return to a user
     sender: RpcSender,
     /// Call registry, which is used to record calls, resubscribe on reconnection and send user responses
     call_registry: Arc<Mutex<CallRegistry>>,
 }
 
-impl<S: AsyncReadExt + AsyncWriteExt + Unpin + Send + 'static> RpcConnection<S> {
+impl RpcConnection {
     /// Contructor. Uses [Connector] to connect to the peer
-    pub async fn new(connector: Box<dyn Connector<S>>, reconnect: bool) -> Result<Self> {
+    pub async fn new(connector: Box<dyn Connector>, reconnect: bool) -> Result<Self> {
         let call_registry = Arc::new(Mutex::new(CallRegistry::new()));
 
         let rpc_connector = RpcConnector::new(connector, call_registry.clone());

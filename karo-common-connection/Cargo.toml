@@ -10,6 +10,7 @@ bytes = "1.1"
 log = "0.4"
 anyhow = "1.0"
 tokio = { version = "1.19", features = ["sync", "io-util", "net", "macros"] }
+tokio-send-fd = "0.9"
 
 
 [dev-dependencies]

@@ -1,12 +1,11 @@
 use bson::Bson;
 use karo_common_connection::connection::Connection;
 use log::*;
-use tokio::net::UnixStream;
 
 use super::simple_connector::SimpleConnector;
 
 pub struct SimpleEchoSender {
-    connection: Connection<UnixStream>,
+    connection: Connection,
 }
 
 impl SimpleEchoSender {

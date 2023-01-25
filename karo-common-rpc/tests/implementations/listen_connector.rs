@@ -20,7 +20,7 @@ impl ListenConnector {
 }
 
 #[async_trait]
-impl Connector<UnixStream> for ListenConnector {
+impl Connector for ListenConnector {
     async fn connect(&self) -> Result<UnixStream> {
         if let Ok((stream, addr)) = self.listener.as_ref().unwrap().accept().await {
             debug!("New connection from {:?}", addr);

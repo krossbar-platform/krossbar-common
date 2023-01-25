@@ -2,7 +2,8 @@ use anyhow::{Context, Result};
 use bson::{self, Bson};
 use bytes::Bytes;
 use tokio::{
-    io::{AsyncReadExt, AsyncWriteExt},
+    io::AsyncWriteExt,
+    net::UnixStream,
     sync::mpsc::{self, Receiver},
 };
 
@@ -11,11 +12,11 @@ use crate::{connector::Connector, socket_reader::read_bson_from_socket, writer::
 /// Generic connection handle.
 /// Reconnects if connection closed.
 /// Can be used to get a Writer to simultaniously send data
-pub struct Connection<S: AsyncReadExt + AsyncWriteExt> {
+pub struct Connection {
     /// Connector to initiate connection and reconnect if disconnected
-    connector: Box<dyn Connector<S>>,
+    connector: Box<dyn Connector>,
     /// Socket connected to a peer
-    stream: S,
+    stream: UnixStream,
     /// To receive data from a writer
     write_rx: Receiver<Bytes>,
     /// To return to users to write outgoing messages
@@ -24,9 +25,9 @@ pub struct Connection<S: AsyncReadExt + AsyncWriteExt> {
     reconnect: bool,
 }
 
-impl<S: AsyncReadExt + AsyncWriteExt + Unpin> Connection<S> {
+impl Connection {
     /// Contructor. Uses [Connector] to connect to the peer
-    pub async fn new(connector: Box<dyn Connector<S>>, reconnect: bool) -> Result<Self> {
+    pub async fn new(connector: Box<dyn Connector>, reconnect: bool) -> Result<Self> {
         let (sender, receiver) = mpsc::channel(32);
         let stream = connector.connect().await?;
 

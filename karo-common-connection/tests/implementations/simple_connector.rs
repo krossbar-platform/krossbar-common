@@ -21,7 +21,7 @@ impl SimpleConnector {
 }
 
 #[async_trait]
-impl Connector<UnixStream> for SimpleConnector {
+impl Connector for SimpleConnector {
     async fn connect(&self) -> Result<UnixStream> {
         loop {
             if let Ok(stream) = UnixStream::connect(&self.socket_path).await {

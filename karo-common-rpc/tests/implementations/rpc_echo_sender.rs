@@ -5,7 +5,6 @@ use karo_common_rpc::{
     Message,
 };
 use log::*;
-use tokio::net::UnixStream;
 
 use crate::implementations::message_type::MessageType;
 
@@ -27,7 +26,7 @@ impl SimpleEchoSender {
         Self { sender }
     }
 
-    pub async fn start_loop(mut connection: RpcConnection<UnixStream>) {
+    pub async fn start_loop(mut connection: RpcConnection) {
         tokio::spawn(async move {
             loop {
                 tokio::select! {
