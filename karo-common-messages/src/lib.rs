@@ -56,9 +56,18 @@ impl Message {
     }
 }
 
+// TODO: Add rpc functions to send/receive a serializable type?
 impl Into<Bson> for Message {
     fn into(self) -> Bson {
         bson::to_bson(&self).unwrap()
+    }
+}
+
+impl TryFrom<Bson> for Message {
+    type Error = bson::de::Error;
+
+    fn try_from(value: Bson) -> Result<Self, Self::Error> {
+        Ok(bson::from_bson(value)?)
     }
 }
 
