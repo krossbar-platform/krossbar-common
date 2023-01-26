@@ -28,43 +28,50 @@ impl Writer {
 
     /// Write outgoing Bson message
     pub async fn write_bson(&mut self, message: &Bson) -> Result<()> {
-        let bytes = bson::to_raw_document_buf(message)
-            .map(|data| data.into_bytes())
-            .context("Failed to serialize incoming Bson")?;
+        let bytes = Bytes::from(
+            bson::to_raw_document_buf(message)
+                .map(|data| data.into_bytes())
+                .context("Failed to serialize incoming Bson")?,
+        );
 
-        match self.send_stream.lock().await.deref_mut() {
-            Some(socket) => socket
-                .write(&Bytes::from(bytes))
-                .await
-                .map(|_| ())
-                .context("Failed to write outgoing message into the socket"),
-            None => Err(anyhow!("Connection closed")),
+        // If failed to write into a socket. we loop and let reader to reconnect
+        loop {
+            match self.send_stream.lock().await.deref_mut() {
+                Some(socket) => {
+                    // Return if succeeded or try again after reconnection
+                    if socket.write(&bytes).await.is_ok() {
+                        return Ok(());
+                    }
+                }
+                None => return Err(anyhow!("Connection closed")),
+            }
         }
     }
 
     /// Write FD following data
     pub async fn write_bson_fd(&mut self, message: &Bson, stream: UnixStream) -> Result<()> {
-        let bytes = bson::to_raw_document_buf(message)
-            .map(|data| data.into_bytes())
-            .context("Failed to serialize incoming Bson")?;
+        let bytes = Bytes::from(
+            bson::to_raw_document_buf(message)
+                .map(|data| data.into_bytes())
+                .context("Failed to serialize incoming Bson")?,
+        );
 
         let os_stream = stream.into_std().unwrap();
         let fd = os_stream.into_raw_fd();
 
-        match self.send_stream.lock().await.deref_mut() {
-            Some(socket) => {
-                socket
-                    .write(&Bytes::from(bytes))
-                    .await
-                    .context("Failed to write outgoing message into the socket")?;
-                socket
-                    .as_ref()
-                    .send_fd(fd)
-                    .await
-                    .context("Failed to write outgoing fd into the socket")
-            }
+        loop {
+            match self.send_stream.lock().await.deref_mut() {
+                Some(socket) => {
+                    if socket.write(&bytes).await.is_ok()
+                        && socket.as_ref().send_fd(fd).await.is_ok()
+                    // Return if succeeded or try again after reconnection
+                    {
+                        return Ok(());
+                    }
+                }
 
-            None => Err(anyhow!("Connection closed")),
+                None => return Err(anyhow!("Connection closed")),
+            }
         }
     }
 

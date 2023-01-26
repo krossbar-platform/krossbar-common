@@ -18,20 +18,17 @@ pub struct Connection {
     read_stream: OwnedReadHalf,
     /// To return to users to write outgoing messages
     writer: Writer,
-    /// Reconnect if connection dropped
-    reconnect: bool,
 }
 
 impl Connection {
     /// Contructor. Uses [Connector] to connect to the peer
-    pub async fn new(connector: Box<dyn Connector>, reconnect: bool) -> Result<Self> {
+    pub async fn new(connector: Box<dyn Connector>) -> Result<Self> {
         let (read_stream, write_stream) = connector.connect().await?.into_split();
 
         Ok(Self {
             connector,
             read_stream,
             writer: Writer::new(write_stream),
-            reconnect,
         })
     }
 
@@ -62,7 +59,7 @@ impl Connection {
                 message = read_bson_from_socket(&mut self.read_stream, false) => {
                     if message.is_ok() {
                         return message
-                    } else if self.reconnect {
+                    } else {
                         self.do_reconnect().await?;
                     }
                 }

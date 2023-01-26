@@ -21,7 +21,7 @@ impl SimpleEchoFdListener {
 
         tokio::spawn(async move {
             let connector = Box::new(ListenConnector::new(&socket_path));
-            let mut rpc_client = RpcConnection::new(connector, true).await.unwrap();
+            let mut rpc_client = RpcConnection::new(connector).await.unwrap();
 
             loop {
                 tokio::select! {
@@ -34,7 +34,7 @@ impl SimpleEchoFdListener {
                             drop(rpc_client);
 
                             let connector = Box::new(ListenConnector::new(&socket_path));
-                            rpc_client = RpcConnection::new(connector, true).await.unwrap();
+                            rpc_client = RpcConnection::new(connector).await.unwrap();
                         } else {
                             info!("Listener dropped. Shutting down");
                             break;

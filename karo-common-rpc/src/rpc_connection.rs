@@ -29,12 +29,12 @@ pub struct RpcConnection {
 
 impl RpcConnection {
     /// Contructor. Uses [Connector] to connect to the peer
-    pub async fn new(connector: Box<dyn Connector>, reconnect: bool) -> Result<Self> {
+    pub async fn new(connector: Box<dyn Connector>) -> Result<Self> {
         let call_registry = Arc::new(Mutex::new(CallRegistry::new()));
 
         let rpc_connector = RpcConnector::new(connector, call_registry.clone());
 
-        let connection = Connection::new(Box::new(rpc_connector), reconnect).await?;
+        let connection = Connection::new(Box::new(rpc_connector)).await?;
         let sender = RpcSender::new(connection.writer(), call_registry.clone());
 
         Ok(Self {

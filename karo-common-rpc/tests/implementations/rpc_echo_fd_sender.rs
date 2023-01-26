@@ -14,7 +14,7 @@ pub struct SimpleEchoFdSender {
 impl SimpleEchoFdSender {
     pub async fn new(socket_path: &str) -> Self {
         let connector = SimpleConnector::new(socket_path);
-        let connection = RpcConnection::new(Box::new(connector), true).await.unwrap();
+        let connection = RpcConnection::new(Box::new(connector)).await.unwrap();
 
         Self { connection }
     }
