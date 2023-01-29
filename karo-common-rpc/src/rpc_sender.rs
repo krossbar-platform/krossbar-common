@@ -3,13 +3,14 @@ use std::sync::{
     Arc,
 };
 
-use anyhow::{Context, Ok, Result};
+use anyhow::{anyhow, Context, Ok, Result};
 use bson::Bson;
 use log::*;
 use tokio::{
     net::UnixStream,
     sync::{mpsc, Mutex},
 };
+use tokio_stream::wrappers::ReceiverStream;
 
 use karo_common_connection::writer::Writer;
 
@@ -52,17 +53,17 @@ impl RpcSender {
     }
 
     /// Send a call
-    pub async fn call(&mut self, body: Bson) -> Result<OneReceiver<UserMessageHandle>> {
-        let receiver = self.call_subscribe(body, false).await?;
+    pub async fn call(&mut self, body: Bson) -> Result<UserMessageHandle> {
+        let mut receiver = self.call_subscribe(body, false).await?;
 
-        Ok(OneReceiver::new(receiver))
+        receiver.recv().await.ok_or(anyhow!("Connection closed"))
     }
 
     /// Subscribe
-    pub async fn subscribe(&mut self, body: Bson) -> Result<Receiver<UserMessageHandle>> {
+    pub async fn subscribe(&mut self, body: Bson) -> Result<ReceiverStream<UserMessageHandle>> {
         let receiver = self.call_subscribe(body, true).await?;
 
-        Ok(Receiver::new(receiver))
+        Ok(ReceiverStream::new(receiver))
     }
 
     async fn call_subscribe(
@@ -91,35 +92,5 @@ impl RpcSender {
 
     fn seq_no(&mut self) -> u64 {
         self.seq_no_counter.fetch_add(1, Ordering::Release)
-    }
-}
-
-// TODO: Move to own module?
-/// Struct which drop on receiving a single message
-pub struct OneReceiver<T> {
-    receiver: mpsc::Receiver<T>,
-}
-
-impl<T> OneReceiver<T> {
-    pub(crate) fn new(receiver: mpsc::Receiver<T>) -> Self {
-        Self { receiver }
-    }
-
-    pub async fn recv(mut self) -> Option<T> {
-        self.receiver.recv().await
-    }
-}
-
-pub struct Receiver<T> {
-    receiver: mpsc::Receiver<T>,
-}
-
-impl<T> Receiver<T> {
-    pub(crate) fn new(receiver: mpsc::Receiver<T>) -> Self {
-        Self { receiver }
-    }
-
-    pub async fn recv(&mut self) -> Option<T> {
-        self.receiver.recv().await
     }
 }

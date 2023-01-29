@@ -6,7 +6,8 @@ use tempdir::TempDir;
 mod implementations;
 
 use implementations::{
-    rpc_echo_fd_listener::SimpleEchoFdListener, rpc_echo_fd_sender::SimpleEchoFdSender,
+    message_type::MessageType, rpc_echo_fd_listener::SimpleEchoFdListener,
+    rpc_echo_fd_sender::SimpleEchoFdSender,
 };
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
@@ -16,7 +17,7 @@ use tokio::{
 #[tokio::test(flavor = "multi_thread")]
 async fn test_rpc_fd() {
     let _ = pretty_env_logger::formatted_builder()
-        .filter_level(log::LevelFilter::Trace)
+        .filter_level(log::LevelFilter::Debug)
         .try_init();
 
     let socket_dir = TempDir::new("karo_hub_socket_dir").expect("Failed to create socket tempdir");
@@ -64,13 +65,14 @@ async fn test_rpc_fd() {
 
     assert_eq!(pair_received_bson, message);
 
-    // One time response. See logs if removed response from call registry
-    let call = sender.call(&message).await;
+    let mut writer = sender.sender();
 
     // Start loop to start receiving responses
     sender.start_loop().await;
 
-    let mut call_response = call.recv().await.unwrap();
+    let bson = bson::to_bson(&MessageType::Call(message.clone())).unwrap();
+    // One time response. See logs if removed response from call registry
+    let mut call_response = writer.call(bson).await.unwrap();
 
     let mut stream_received = call_response.take_fd().unwrap();
     debug!("Call response: {}", response_message.body());

@@ -1,10 +1,7 @@
 use bson::Bson;
-use karo_common_rpc::{
-    rpc_connection::RpcConnection,
-    rpc_sender::{OneReceiver, Receiver, RpcSender},
-    Message,
-};
+use karo_common_rpc::{rpc_connection::RpcConnection, rpc_sender::RpcSender, Message};
 use log::*;
+use tokio_stream::wrappers::ReceiverStream;
 
 use crate::implementations::message_type::MessageType;
 
@@ -46,7 +43,7 @@ impl SimpleEchoSender {
         self.sender.send(bson).await.unwrap();
     }
 
-    pub async fn call(&mut self, message: &Bson) -> OneReceiver<Message> {
+    pub async fn call(&mut self, message: &Bson) -> Message {
         debug!("Call: {:?}", message);
 
         let bson = bson::to_bson(&MessageType::Call(message.clone())).unwrap();
@@ -54,7 +51,7 @@ impl SimpleEchoSender {
         self.sender.call(bson).await.unwrap()
     }
 
-    pub async fn subscribe(&mut self, message: &Bson) -> Receiver<Message> {
+    pub async fn subscribe(&mut self, message: &Bson) -> ReceiverStream<Message> {
         debug!("Subscription: {:?}", message);
 
         let bson = bson::to_bson(&MessageType::Subscription(message.clone())).unwrap();

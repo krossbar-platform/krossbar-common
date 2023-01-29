@@ -1,5 +1,5 @@
 use bson::Bson;
-use karo_common_rpc::{rpc_connection::RpcConnection, rpc_sender::OneReceiver, Message};
+use karo_common_rpc::{rpc_connection::RpcConnection, rpc_sender::RpcSender, Message};
 use log::*;
 use tokio::net::UnixStream;
 
@@ -55,7 +55,11 @@ impl SimpleEchoFdSender {
             .unwrap();
     }
 
-    pub async fn call(&mut self, message: &Bson) -> OneReceiver<Message> {
+    pub fn sender(&self) -> RpcSender {
+        self.connection.sender()
+    }
+
+    pub async fn call(&mut self, message: &Bson) -> Message {
         debug!("Call: {:?}", message);
 
         let bson = bson::to_bson(&MessageType::Call(message.clone())).unwrap();

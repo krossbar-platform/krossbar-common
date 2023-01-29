@@ -5,6 +5,7 @@ use tempdir::TempDir;
 mod implementations;
 
 use implementations::{rpc_echo_listener::SimpleEchoListener, rpc_echo_sender::SimpleEchoSender};
+use tokio_stream::StreamExt;
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_rpc_calls() {
@@ -35,29 +36,29 @@ async fn test_rpc_calls() {
     // One time response. See logs if removed response from call registry
     let call = sender.call(&message).await;
 
-    debug!("Call response: {}", call.recv().await.unwrap().body());
+    debug!("Call response: {}", call.body());
 
     // Subscription. Test implementation will return 5 echoes
     let mut subscription = sender.subscribe(&message).await;
     debug!(
         "Subscription response 1: {}",
-        subscription.recv().await.unwrap().body()
+        subscription.next().await.unwrap().body()
     );
     debug!(
         "Subscription response 2: {}",
-        subscription.recv().await.unwrap().body()
+        subscription.next().await.unwrap().body()
     );
     debug!(
         "Subscription response 3: {}",
-        subscription.recv().await.unwrap().body()
+        subscription.next().await.unwrap().body()
     );
     debug!(
         "Subscription response 4: {}",
-        subscription.recv().await.unwrap().body()
+        subscription.next().await.unwrap().body()
     );
     debug!(
         "Subscription response 5: {}",
-        subscription.recv().await.unwrap().body()
+        subscription.next().await.unwrap().body()
     );
 }
 
@@ -87,23 +88,23 @@ async fn test_rpc_reconnect() {
     let mut subscription = sender.subscribe(&message).await;
     debug!(
         "Subscription response 1: {}",
-        subscription.recv().await.unwrap().body()
+        subscription.next().await.unwrap().body()
     );
     debug!(
         "Subscription response 2: {}",
-        subscription.recv().await.unwrap().body()
+        subscription.next().await.unwrap().body()
     );
     debug!(
         "Subscription response 3: {}",
-        subscription.recv().await.unwrap().body()
+        subscription.next().await.unwrap().body()
     );
     debug!(
         "Subscription response 4: {}",
-        subscription.recv().await.unwrap().body()
+        subscription.next().await.unwrap().body()
     );
     debug!(
         "Subscription response 5: {}",
-        subscription.recv().await.unwrap().body()
+        subscription.next().await.unwrap().body()
     );
 
     // After we reconnect, sender resubscribers and listener should send another 5 reponses
@@ -111,22 +112,22 @@ async fn test_rpc_reconnect() {
 
     debug!(
         "Resubscription response 1: {}",
-        subscription.recv().await.unwrap().body()
+        subscription.next().await.unwrap().body()
     );
     debug!(
         "Resubscription response 2: {}",
-        subscription.recv().await.unwrap().body()
+        subscription.next().await.unwrap().body()
     );
     debug!(
         "Resubscription response 3: {}",
-        subscription.recv().await.unwrap().body()
+        subscription.next().await.unwrap().body()
     );
     debug!(
         "Resubscription response 4: {}",
-        subscription.recv().await.unwrap().body()
+        subscription.next().await.unwrap().body()
     );
     debug!(
         "Resubscription response 5: {}",
-        subscription.recv().await.unwrap().body()
+        subscription.next().await.unwrap().body()
     );
 }
