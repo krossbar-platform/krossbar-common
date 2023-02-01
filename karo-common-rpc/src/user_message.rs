@@ -1,9 +1,10 @@
 use std::fmt::Debug;
 
 use anyhow::{Context, Result};
-use bson::Bson;
+use bson::{from_bson, Bson};
 
 use karo_common_connection::writer::Writer;
+use serde::de::DeserializeOwned;
 use tokio::net::UnixStream;
 
 use crate::message::{Message, MessageType};
@@ -53,6 +54,10 @@ impl UserMessageHandle {
 
     pub fn body(&self) -> &Bson {
         &self.message.body
+    }
+
+    pub fn message<T: DeserializeOwned>(&self) -> T {
+        from_bson(self.body().clone()).unwrap()
     }
 
     pub fn take_fd(&mut self) -> Option<UnixStream> {
