@@ -1,10 +1,10 @@
 use std::fmt::Debug;
 
 use anyhow::{Context, Result};
-use bson::{from_bson, Bson};
+use bson::Bson;
 
 use karo_common_connection::writer::Writer;
-use serde::de::DeserializeOwned;
+use serde::{de::DeserializeOwned, Serialize};
 use tokio::net::UnixStream;
 
 use crate::message::{Message, MessageType};
@@ -52,12 +52,8 @@ impl UserMessageHandle {
         self.message.seq_no
     }
 
-    pub fn body(&self) -> &Bson {
-        &self.message.body
-    }
-
-    pub fn message<T: DeserializeOwned>(&self) -> T {
-        from_bson(self.body().clone()).unwrap()
+    pub fn body<M: DeserializeOwned>(&self) -> M {
+        bson::from_bson(self.message.body.clone()).unwrap()
     }
 
     pub fn take_fd(&mut self) -> Option<UnixStream> {
@@ -68,10 +64,12 @@ impl UserMessageHandle {
         self.message.message_type == MessageType::Call
     }
 
-    pub async fn reply(&mut self, reply: Bson) -> Result<()> {
+    pub async fn reply<M: Serialize>(&mut self, reply: &M) -> Result<()> {
+        let body = bson::to_bson(reply).unwrap();
+
         // The writer is Some only if we have a call, and it's the only case when we can reply
         if let Some(writer) = &mut self.response_writer {
-            let response = self.message.make_response(reply, false)?;
+            let response = self.message.make_response(body, false)?;
             let bson = bson::to_bson(&response).context("Failed to serialize a reply")?;
 
             writer

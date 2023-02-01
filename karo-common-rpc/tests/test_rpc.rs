@@ -1,4 +1,4 @@
-use bson::bson;
+use bson::{bson, Bson};
 use log::*;
 use tempdir::TempDir;
 
@@ -36,29 +36,29 @@ async fn test_rpc_calls() {
     // One time response. See logs if removed response from call registry
     let call = sender.call(&message).await;
 
-    debug!("Call response: {}", call.body());
+    debug!("Call response: {}", call.body::<Bson>());
 
     // Subscription. Test implementation will return 5 echoes
     let mut subscription = sender.subscribe(&message).await;
     debug!(
         "Subscription response 1: {}",
-        subscription.next().await.unwrap().body()
+        subscription.next().await.unwrap().body::<Bson>()
     );
     debug!(
         "Subscription response 2: {}",
-        subscription.next().await.unwrap().body()
+        subscription.next().await.unwrap().body::<Bson>()
     );
     debug!(
         "Subscription response 3: {}",
-        subscription.next().await.unwrap().body()
+        subscription.next().await.unwrap().body::<Bson>()
     );
     debug!(
         "Subscription response 4: {}",
-        subscription.next().await.unwrap().body()
+        subscription.next().await.unwrap().body::<Bson>()
     );
     debug!(
         "Subscription response 5: {}",
-        subscription.next().await.unwrap().body()
+        subscription.next().await.unwrap().body::<Bson>()
     );
 }
 
@@ -88,23 +88,23 @@ async fn test_rpc_reconnect() {
     let mut subscription = sender.subscribe(&message).await;
     debug!(
         "Subscription response 1: {}",
-        subscription.next().await.unwrap().body()
+        subscription.next().await.unwrap().body::<Bson>()
     );
     debug!(
         "Subscription response 2: {}",
-        subscription.next().await.unwrap().body()
+        subscription.next().await.unwrap().body::<Bson>()
     );
     debug!(
         "Subscription response 3: {}",
-        subscription.next().await.unwrap().body()
+        subscription.next().await.unwrap().body::<Bson>()
     );
     debug!(
         "Subscription response 4: {}",
-        subscription.next().await.unwrap().body()
+        subscription.next().await.unwrap().body::<Bson>()
     );
     debug!(
         "Subscription response 5: {}",
-        subscription.next().await.unwrap().body()
+        subscription.next().await.unwrap().body::<Bson>()
     );
 
     // After we reconnect, sender resubscribers and listener should send another 5 reponses
@@ -112,22 +112,22 @@ async fn test_rpc_reconnect() {
 
     debug!(
         "Resubscription response 1: {}",
-        subscription.next().await.unwrap().body()
+        subscription.next().await.unwrap().body::<Bson>()
     );
     debug!(
         "Resubscription response 2: {}",
-        subscription.next().await.unwrap().body()
+        subscription.next().await.unwrap().body::<Bson>()
     );
     debug!(
         "Resubscription response 3: {}",
-        subscription.next().await.unwrap().body()
+        subscription.next().await.unwrap().body::<Bson>()
     );
     debug!(
         "Resubscription response 4: {}",
-        subscription.next().await.unwrap().body()
+        subscription.next().await.unwrap().body::<Bson>()
     );
     debug!(
         "Resubscription response 5: {}",
-        subscription.next().await.unwrap().body()
+        subscription.next().await.unwrap().body::<Bson>()
     );
 }

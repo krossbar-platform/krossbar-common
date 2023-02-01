@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use anyhow::{Context, Result};
-use bson;
+use bson::{self, Bson};
 use log::*;
 use tokio::{
     io::AsyncWriteExt,
@@ -90,7 +90,7 @@ impl CallRegistry {
                 }
             }
             _ => {
-                warn!("Unknown client response: {:?}", handle.body());
+                warn!("Unknown client response: {:?}", handle.body::<Bson>());
             }
         }
     }

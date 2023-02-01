@@ -1,3 +1,4 @@
+use bson::Bson;
 use karo_common_rpc::rpc_connection::RpcConnection;
 use log::*;
 use tokio::sync::mpsc::{self, Sender};
@@ -44,22 +45,21 @@ impl SimpleEchoListener {
     }
 
     async fn handle_message(message: &mut Message) {
-        let inmessage =
-            bson::from_bson::<message_type::MessageType>(message.body().clone()).unwrap();
+        let inmessage = message.body();
 
         match inmessage {
             message_type::MessageType::Call(bson) => {
                 debug!("Received a call '{:?}'. Sending echo", bson);
                 assert!(message.is_call());
 
-                message.reply(message.body().clone()).await.unwrap();
+                message.reply(&message.body::<Bson>()).await.unwrap();
             }
             message_type::MessageType::Subscription(bson) => {
                 debug!("Received a subscription '{:?}'. Sending 5 replies", bson);
                 assert!(message.is_call());
 
                 for _ in 0..5 {
-                    message.reply(message.body().clone()).await.unwrap();
+                    message.reply(&message.body::<Bson>()).await.unwrap();
                 }
             }
             message_type::MessageType::Message(bson) => {

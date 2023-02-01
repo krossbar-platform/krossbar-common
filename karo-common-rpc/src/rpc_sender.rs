@@ -6,6 +6,7 @@ use std::sync::{
 use anyhow::{anyhow, Context, Ok, Result};
 use bson::Bson;
 use log::*;
+use serde::Serialize;
 use tokio::{
     net::UnixStream,
     sync::{mpsc, Mutex},
@@ -53,14 +54,19 @@ impl RpcSender {
     }
 
     /// Send a call
-    pub async fn call(&mut self, body: Bson) -> Result<UserMessageHandle> {
+    pub async fn call<M: Serialize>(&mut self, message: &M) -> Result<UserMessageHandle> {
+        let body = bson::to_bson(message).unwrap();
         let mut receiver = self.call_subscribe(body, false).await?;
 
         receiver.recv().await.ok_or(anyhow!("Connection closed"))
     }
 
     /// Subscribe
-    pub async fn subscribe(&mut self, body: Bson) -> Result<ReceiverStream<UserMessageHandle>> {
+    pub async fn subscribe<M: Serialize>(
+        &mut self,
+        message: &M,
+    ) -> Result<ReceiverStream<UserMessageHandle>> {
+        let body = bson::to_bson(message).unwrap();
         let receiver = self.call_subscribe(body, true).await?;
 
         Ok(ReceiverStream::new(receiver))

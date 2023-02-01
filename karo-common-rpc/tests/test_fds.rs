@@ -52,7 +52,7 @@ async fn test_rpc_fd() {
     let mut response_message = sender.read().await;
 
     let mut stream_received = response_message.take_fd().unwrap();
-    debug!("Message response: {}", response_message.body());
+    debug!("Message response: {}", response_message.body::<Bson>());
 
     let mut buffer = BytesMut::new();
     stream_received.read_buf(&mut buffer).await.unwrap();
@@ -72,10 +72,10 @@ async fn test_rpc_fd() {
 
     let bson = bson::to_bson(&MessageType::Call(message.clone())).unwrap();
     // One time response. See logs if removed response from call registry
-    let mut call_response = writer.call(bson).await.unwrap();
+    let mut call_response = writer.call(&bson).await.unwrap();
 
     let mut stream_received = call_response.take_fd().unwrap();
-    debug!("Call response: {}", response_message.body());
+    debug!("Call response: {}", response_message.body::<Bson>());
 
     let mut buffer = BytesMut::new();
     stream_received.read_buf(&mut buffer).await.unwrap();

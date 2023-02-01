@@ -48,7 +48,7 @@ impl SimpleEchoSender {
 
         let bson = bson::to_bson(&MessageType::Call(message.clone())).unwrap();
 
-        self.sender.call(bson).await.unwrap()
+        self.sender.call(&bson).await.unwrap()
     }
 
     pub async fn subscribe(&mut self, message: &Bson) -> ReceiverStream<Message> {
@@ -56,6 +56,6 @@ impl SimpleEchoSender {
 
         let bson = bson::to_bson(&MessageType::Subscription(message.clone())).unwrap();
 
-        self.sender.subscribe(bson).await.unwrap()
+        self.sender.subscribe(&bson).await.unwrap()
     }
 }

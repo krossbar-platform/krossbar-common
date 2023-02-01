@@ -48,8 +48,7 @@ impl SimpleEchoFdListener {
     }
 
     async fn handle_message(message: &mut Message, mut sender: RpcSender) {
-        let inmessage =
-            bson::from_bson::<message_type::MessageType>(message.body().clone()).unwrap();
+        let inmessage = message.body();
 
         match inmessage {
             message_type::MessageType::Call(bson) => {

@@ -64,6 +64,6 @@ impl SimpleEchoFdSender {
 
         let bson = bson::to_bson(&MessageType::Call(message.clone())).unwrap();
 
-        self.connection.sender().call(bson).await.unwrap()
+        self.connection.sender().call(&bson).await.unwrap()
     }
 }
