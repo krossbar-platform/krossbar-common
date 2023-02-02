@@ -1,4 +1,5 @@
 use bson::Bson;
+use karo_common_connection::monitor::Monitor;
 use karo_common_rpc::{rpc_connection::RpcConnection, rpc_sender::RpcSender, Message};
 use log::*;
 use tokio_stream::wrappers::ReceiverStream;
@@ -15,6 +16,19 @@ impl SimpleEchoSender {
     pub async fn new(socket_path: &str) -> Self {
         let connector = SimpleConnector::new(socket_path);
         let connection = RpcConnection::new(Box::new(connector)).await.unwrap();
+
+        let sender = connection.sender();
+
+        Self::start_loop(connection).await;
+
+        Self { sender }
+    }
+
+    pub async fn new_with_monitor(socket_path: &str, monitor: Box<dyn Monitor>) -> Self {
+        let connector = SimpleConnector::new(socket_path);
+        let mut connection = RpcConnection::new(Box::new(connector)).await.unwrap();
+
+        connection.set_monitor(monitor);
 
         let sender = connection.sender();
 

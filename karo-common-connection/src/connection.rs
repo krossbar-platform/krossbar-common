@@ -95,6 +95,10 @@ impl Connection {
                 Some((outgoing_message, stream)) = self.outgoing_rx.recv() => {
                     let fd = stream.map(|stream| stream.into_std().unwrap().into_raw_fd());
 
+                    if let Some(monitor) = &mut self.monitor {
+                        monitor.message(&outgoing_message, MessageDirection::Outgoing).await;
+                    }
+
                     loop {
                         let bytes = Bytes::from(
                             bson::to_raw_document_buf(&outgoing_message)

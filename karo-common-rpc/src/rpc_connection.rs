@@ -5,7 +5,7 @@ use bson;
 use log::*;
 use tokio::sync::Mutex;
 
-use karo_common_connection::{connection::Connection, connector::Connector};
+use karo_common_connection::{connection::Connection, connector::Connector, monitor::Monitor};
 
 use crate::{
     call_registry::CallRegistry,
@@ -91,5 +91,9 @@ impl RpcConnection {
     /// Reset all existing calls on reconnect
     pub async fn reset(&mut self) {
         self.call_registry.lock().await.clear()
+    }
+
+    pub fn set_monitor(&mut self, monitor: Box<dyn Monitor>) {
+        self.connection.set_monitor(monitor);
     }
 }

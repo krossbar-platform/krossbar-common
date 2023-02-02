@@ -7,6 +7,8 @@ mod implementations;
 use implementations::{rpc_echo_listener::SimpleEchoListener, rpc_echo_sender::SimpleEchoSender};
 use tokio_stream::StreamExt;
 
+use crate::implementations::acc_monitor::AccMonitor;
+
 #[tokio::test(flavor = "multi_thread")]
 async fn test_rpc_calls() {
     let _ = pretty_env_logger::formatted_builder()
@@ -24,7 +26,8 @@ async fn test_rpc_calls() {
 
     let _listener = SimpleEchoListener::new(&socket_path).await;
 
-    let mut sender = SimpleEchoSender::new(&socket_path).await;
+    let monitor = Box::new(AccMonitor::default());
+    let mut sender = SimpleEchoSender::new_with_monitor(&socket_path, monitor.clone()).await;
 
     let message = bson!({
         "message": "Hello world!"
@@ -60,6 +63,12 @@ async fn test_rpc_calls() {
         "Subscription response 5: {}",
         subscription.next().await.unwrap().body::<Bson>()
     );
+
+    println!("{}", monitor.print().await);
+
+    let monitor_messages = monitor.messages().lock().await;
+
+    assert_eq!(monitor_messages.len(), 9);
 }
 
 #[tokio::test(flavor = "multi_thread")]
