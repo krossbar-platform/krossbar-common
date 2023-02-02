@@ -99,12 +99,12 @@ impl CallRegistry {
         &self,
         socket: &mut S,
     ) -> Result<()> {
-        for message in self.calls.values() {
-            if !message.subscription {
+        for call in self.calls.values() {
+            if !call.subscription {
                 continue;
             }
 
-            let bytes = bson::to_raw_document_buf(&message.message)
+            let bytes = bson::to_raw_document_buf(&call.message)
                 .map(|data| data.into_bytes())
                 .context("Failed to serialize incoming Bson")?;
 
@@ -120,5 +120,11 @@ impl CallRegistry {
     /// Reset all calls on reconnect
     pub fn clear(&mut self) {
         self.calls.clear();
+    }
+}
+
+impl Default for CallRegistry {
+    fn default() -> Self {
+        Self::new()
     }
 }

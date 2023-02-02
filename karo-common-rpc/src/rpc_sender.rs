@@ -58,7 +58,10 @@ impl RpcSender {
         let body = bson::to_bson(message).unwrap();
         let mut receiver = self.call_subscribe(body, false).await?;
 
-        receiver.recv().await.ok_or(anyhow!("Connection closed"))
+        receiver
+            .recv()
+            .await
+            .ok_or_else(|| anyhow!("Connection closed"))
     }
 
     /// Subscribe

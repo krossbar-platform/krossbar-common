@@ -34,7 +34,7 @@ pub async fn read_bson_from_socket<S: AsyncReadExt + Unpin>(
                 }
 
                 // Descrease bytes by number of bytes already read
-                bytes_to_read = bytes_to_read - bytes_read as u32;
+                bytes_to_read -= bytes_read as u32;
                 if log {
                     trace!(
                         "Read {} bytes from socket. Still {} to read",

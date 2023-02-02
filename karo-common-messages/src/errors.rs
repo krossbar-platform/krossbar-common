@@ -31,8 +31,8 @@ pub enum Error {
     Internal,
 }
 
-impl Into<Message> for Error {
-    fn into(self) -> Message {
-        Message::Response(Response::Error(self))
+impl From<Error> for Message {
+    fn from(err: Error) -> Self {
+        Message::Response(Response::Error(err))
     }
 }

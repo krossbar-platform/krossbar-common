@@ -56,10 +56,9 @@ impl Message {
     }
 }
 
-// TODO: Add rpc functions to send/receive a serializable type?
-impl Into<Bson> for Message {
-    fn into(self) -> Bson {
-        bson::to_bson(&self).unwrap()
+impl From<Message> for Bson {
+    fn from(message: Message) -> Self {
+        bson::to_bson(&message).unwrap()
     }
 }
 
@@ -67,7 +66,7 @@ impl TryFrom<Bson> for Message {
     type Error = bson::de::Error;
 
     fn try_from(value: Bson) -> Result<Self, Self::Error> {
-        Ok(bson::from_bson(value)?)
+        bson::from_bson(value)
     }
 }
 
@@ -120,9 +119,9 @@ impl Display for HubMessage {
     }
 }
 
-impl Into<Message> for HubMessage {
-    fn into(self) -> Message {
-        Message::HubMessage(self)
+impl From<HubMessage> for Message {
+    fn from(hub_message: HubMessage) -> Self {
+        Message::HubMessage(hub_message)
     }
 }
 
@@ -171,9 +170,9 @@ impl Display for PeerMessage {
     }
 }
 
-impl Into<Message> for PeerMessage {
-    fn into(self) -> Message {
-        Message::PeerMessage(self)
+impl From<PeerMessage> for Message {
+    fn from(peer_message: PeerMessage) -> Self {
+        Message::PeerMessage(peer_message)
     }
 }
 
@@ -197,9 +196,9 @@ pub enum Response {
     Error(errors::Error),
 }
 
-impl Into<Message> for Response {
-    fn into(self) -> Message {
-        Message::Response(self)
+impl From<Response> for Message {
+    fn from(response: Response) -> Self {
+        Message::Response(response)
     }
 }
 
