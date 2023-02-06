@@ -6,7 +6,7 @@ use log::*;
 
 use tokio::{net::UnixStream, sync::Mutex};
 
-use karo_common_connection::connector::Connector;
+use karo_common_connection::{connector::Connector, writer::Writer};
 
 use crate::call_registry::CallRegistry;
 
@@ -28,16 +28,16 @@ impl RpcConnector {
 #[async_trait]
 impl Connector for RpcConnector {
     async fn connect(&self) -> Result<UnixStream> {
-        let mut connection = self.connector.connect().await?;
+        self.connector.connect().await
+    }
+
+    async fn on_connected(&self, writer: &mut Writer) -> Result<()> {
         trace!("RPC reconnected. Resubscribing");
 
-        // XXX: Can we move this somewhere where we have [Writer]?
         self.call_registry
             .lock()
             .await
-            .resend_subscriptions(&mut connection)
-            .await?;
-
-        Ok(connection)
+            .resend_subscriptions(writer)
+            .await
     }
 }

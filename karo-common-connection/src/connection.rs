@@ -135,7 +135,9 @@ impl Connection {
         };
 
         self.stream = stream;
-        Ok(())
+
+        // Give connector an opportunity to send post-connection messages
+        self.connector.on_connected(&mut self.writer).await
     }
 
     /// Get a new writer

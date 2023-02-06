@@ -80,7 +80,9 @@ impl RpcSender {
         body: Bson,
         subscription: bool,
     ) -> Result<mpsc::Receiver<UserMessageHandle>> {
-        let message = Message::new_call(self.seq_no(), body, false);
+        let seq_no = self.seq_no();
+
+        let message = Message::new_call(seq_no, body, false);
         trace!("Sending new call: {:?}", message);
 
         let bson = bson::to_bson(&message).context("Failed to serialise a call")?;
@@ -89,7 +91,7 @@ impl RpcSender {
             .call_registry
             .lock()
             .await
-            .register_call(message, subscription)
+            .register_call(seq_no, bson.clone(), subscription)
             .context("Failed to register a call")?;
 
         self.socket_writer

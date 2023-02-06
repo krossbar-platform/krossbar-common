@@ -1,21 +1,19 @@
 use std::collections::HashMap;
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use bson::{self, Bson};
+use karo_common_connection::writer::Writer;
 use log::*;
-use tokio::{
-    io::AsyncWriteExt,
-    sync::mpsc::{self, Receiver, Sender},
-};
+use tokio::sync::mpsc::{self, Receiver, Sender};
 
-use crate::{message::Message, user_message::UserMessageHandle};
+use crate::user_message::UserMessageHandle;
 
 /// Call handle we save in a map
 struct Call {
     /// If we're gonna have multiple replies to the call (for instance in case of subscriptions)
     subscription: bool,
     /// Message to resend on resubscription request
-    message: Message,
+    message: Bson,
     /// Use callback TX
     callback: Sender<UserMessageHandle>,
 }
@@ -43,19 +41,20 @@ impl CallRegistry {
     /// *Returns* Receiver for a caller
     pub fn register_call(
         &mut self,
-        message: Message,
+        seq_no: u64,
+        message: Bson,
         subscription: bool,
     ) -> Result<Receiver<UserMessageHandle>> {
         let (tx, rx) = mpsc::channel(16);
 
         trace!("Registering a call: {:?}", message);
 
-        if self.calls.contains_key(&message.seq_no) {
-            panic!("Multiple calls with the same ID: {}", message.seq_no);
+        if self.calls.contains_key(&seq_no) {
+            panic!("Multiple calls with the same ID: {}", seq_no);
         }
 
         self.calls.insert(
-            message.seq_no,
+            seq_no,
             Call {
                 subscription,
                 message,
@@ -95,23 +94,13 @@ impl CallRegistry {
         }
     }
 
-    pub async fn resend_subscriptions<S: AsyncWriteExt + Unpin>(
-        &self,
-        socket: &mut S,
-    ) -> Result<()> {
+    pub async fn resend_subscriptions(&self, writer: &mut Writer) -> Result<()> {
         for call in self.calls.values() {
             if !call.subscription {
                 continue;
             }
 
-            let bytes = bson::to_raw_document_buf(&call.message)
-                .map(|data| data.into_bytes())
-                .context("Failed to serialize incoming Bson")?;
-
-            socket
-                .write_all(&bytes)
-                .await
-                .context("Failed to write outgoing message into the socket")?;
+            writer.write_bson(&call.message).await?
         }
 
         Ok(())
