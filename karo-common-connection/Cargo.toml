@@ -4,17 +4,17 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+anyhow = "1.0"
 async-trait = "0.1"
 bson = "2.3"
 bytes = "1.1"
 log = "0.4"
-anyhow = "1.0"
+serde = "1.0"
 tokio = { version = "1.19", features = ["sync", "io-util", "net", "macros"] }
 tokio-send-fd = "0.9"
 
 
 [dev-dependencies]
-serde = "1.0"
 tempdir = "0.3"
 tokio = { version = "1.19", features = ["rt-multi-thread", "time"] }
 pretty_env_logger = "0.4"

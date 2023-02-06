@@ -1,6 +1,8 @@
 use async_trait::async_trait;
 use bson::Bson;
+use serde::{Deserialize, Serialize};
 
+#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
 pub enum MessageDirection {
     Outgoing,
     Incoming,

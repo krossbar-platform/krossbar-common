@@ -5,6 +5,8 @@ use serde::{Deserialize, Serialize};
 
 mod errors;
 
+pub use errors::Error;
+
 pub const PROTOCOL_VERSION: i64 = 1;
 
 /// Message body, which constains sent data
