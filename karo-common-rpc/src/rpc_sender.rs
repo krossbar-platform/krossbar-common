@@ -1,7 +1,4 @@
-use std::sync::{
-    atomic::{AtomicU64, Ordering},
-    Arc,
-};
+use std::sync::Arc;
 
 use anyhow::{anyhow, Context, Ok, Result};
 use bson::Bson;
@@ -15,27 +12,39 @@ use tokio_stream::wrappers::ReceiverStream;
 
 use karo_common_connection::writer::Writer;
 
-use crate::{call_registry::CallRegistry, message::Message, user_message::UserMessageHandle};
+use crate::{
+    call_registry::CallRegistry, message::Message, sequential_id_provider::SequentialIdProvider,
+    user_message::UserMessageHandle,
+};
 
+/// Rpc sender, which user uses to send RPC messages
 #[derive(Clone)]
 pub struct RpcSender {
-    seq_no_counter: Arc<AtomicU64>,
+    /// Source writer in which messages will be written
     socket_writer: Writer,
+    /// Call registry which accounts for RPC calls and resubscribes on
+    /// reconnections
     call_registry: Arc<Mutex<CallRegistry>>,
+    /// Sequential ID provider to receive monotonic mesage IDs
+    seq_id_provider: SequentialIdProvider,
 }
 
 impl RpcSender {
-    pub fn new(socket_writer: Writer, call_registry: Arc<Mutex<CallRegistry>>) -> Self {
+    pub fn new(
+        socket_writer: Writer,
+        call_registry: Arc<Mutex<CallRegistry>>,
+        seq_id_provider: SequentialIdProvider,
+    ) -> Self {
         Self {
-            seq_no_counter: Arc::new(0u64.into()),
             socket_writer,
             call_registry,
+            seq_id_provider,
         }
     }
 
     /// Send a one-way message
     pub async fn send(&mut self, body: Bson) -> Result<()> {
-        let message = Message::new(self.seq_no(), body, false);
+        let message = Message::new(self.seq_id_provider.next_id(), body, false);
         trace!("Sending new message: {:?}", message);
 
         let message = bson::to_bson(&message).context("Failed to serialise a message")?;
@@ -45,7 +54,7 @@ impl RpcSender {
 
     /// Send a one-way message
     pub async fn send_fd(&mut self, body: Bson, stream: UnixStream) -> Result<()> {
-        let message = Message::new(self.seq_no(), body, true);
+        let message = Message::new(self.seq_id_provider.next_id(), body, true);
         trace!("Sending new message: {:?}", message);
 
         let message = bson::to_bson(&message).context("Failed to serialise a message")?;
@@ -80,7 +89,7 @@ impl RpcSender {
         body: Bson,
         subscription: bool,
     ) -> Result<mpsc::Receiver<UserMessageHandle>> {
-        let seq_no = self.seq_no();
+        let seq_no = self.seq_id_provider.next_id();
 
         let message = Message::new_call(seq_no, body, false);
         trace!("Sending new call: {:?}", message);
@@ -99,9 +108,5 @@ impl RpcSender {
             .await
             .context("Failed to write outgoing message")?;
         Ok(rx)
-    }
-
-    fn seq_no(&mut self) -> u64 {
-        self.seq_no_counter.fetch_add(1, Ordering::Release)
     }
 }

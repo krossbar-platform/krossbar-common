@@ -4,7 +4,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 use tokio::{net::UnixStream, time::sleep};
 
-use karo_common_connection::connector::Connector;
+use karo_common_rpc::rpc_connector::RpcConnector;
 
 const SLEEP_DURATION: Duration = Duration::from_millis(10);
 
@@ -21,7 +21,7 @@ impl SimpleConnector {
 }
 
 #[async_trait]
-impl Connector for SimpleConnector {
+impl RpcConnector for SimpleConnector {
     async fn connect(&self) -> Result<UnixStream> {
         loop {
             if let Ok(stream) = UnixStream::connect(&self.socket_path).await {

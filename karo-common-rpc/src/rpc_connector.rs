@@ -1,43 +1,17 @@
-use std::sync::Arc;
-
 use anyhow::Result;
 use async_trait::async_trait;
-use log::*;
+use tokio::net::UnixStream;
 
-use tokio::{net::UnixStream, sync::Mutex};
+use crate::rpc_sender::RpcSender;
 
-use karo_common_connection::{connector::Connector, writer::Writer};
-
-use crate::call_registry::CallRegistry;
-
-/// Connector which wraps another [Connector] and performs resubscription after reconnection
-pub struct RpcConnector {
-    connector: Box<dyn Connector>,
-    call_registry: Arc<Mutex<CallRegistry>>,
-}
-
-impl RpcConnector {
-    pub fn new(connector: Box<dyn Connector>, call_registry: Arc<Mutex<CallRegistry>>) -> Self {
-        Self {
-            connector,
-            call_registry,
-        }
-    }
-}
-
+/// Connector, which connects to a peer.
+/// Used not only for the initial connection, but also to reconnect if connection closed
 #[async_trait]
-impl Connector for RpcConnector {
-    async fn connect(&self) -> Result<UnixStream> {
-        self.connector.connect().await
-    }
+pub trait RpcConnector: Send + Sync {
+    async fn connect(&self) -> Result<UnixStream>;
 
-    async fn on_connected(&self, writer: &mut Writer) -> Result<()> {
-        trace!("RPC reconnected. Resubscribing");
-
-        self.call_registry
-            .lock()
-            .await
-            .resend_subscriptions(writer)
-            .await
+    /// Connected writer handle to send post-connection messages
+    async fn on_connected(&self, _: &mut RpcSender) -> Result<()> {
+        Ok(())
     }
 }

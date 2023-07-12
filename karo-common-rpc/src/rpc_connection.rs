@@ -5,13 +5,15 @@ use bson;
 use log::*;
 use tokio::sync::Mutex;
 
-use karo_common_connection::{connection::Connection, connector::Connector, monitor::Monitor};
+use karo_common_connection::{connection::Connection, monitor::Monitor};
 
 use crate::{
     call_registry::CallRegistry,
     message::{Message, MessageType},
+    native_connector::NativeConnector,
     rpc_connector::RpcConnector,
     rpc_sender::RpcSender,
+    sequential_id_provider::SequentialIdProvider,
     user_message::UserMessageHandle,
 };
 
@@ -29,13 +31,15 @@ pub struct RpcConnection {
 
 impl RpcConnection {
     /// Contructor. Uses [Connector] to connect to the peer
-    pub async fn new(connector: Box<dyn Connector>) -> Result<Self> {
+    pub async fn new(connector: Box<dyn RpcConnector>) -> Result<Self> {
+        let seq_id_provider = SequentialIdProvider::new();
         let call_registry = Arc::new(Mutex::new(CallRegistry::new()));
 
-        let rpc_connector = RpcConnector::new(connector, call_registry.clone());
+        let rpc_connector =
+            NativeConnector::new(connector, call_registry.clone(), seq_id_provider.clone());
 
         let connection = Connection::new(Box::new(rpc_connector)).await?;
-        let sender = RpcSender::new(connection.writer(), call_registry.clone());
+        let sender = RpcSender::new(connection.writer(), call_registry.clone(), seq_id_provider);
 
         Ok(Self {
             connection,

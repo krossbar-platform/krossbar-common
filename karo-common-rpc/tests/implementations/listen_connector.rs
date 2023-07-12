@@ -3,7 +3,7 @@ use async_trait::async_trait;
 use log::*;
 use tokio::net::{UnixListener, UnixStream};
 
-use karo_common_connection::connector::Connector;
+use karo_common_rpc::rpc_connector::RpcConnector;
 
 pub struct ListenConnector {
     listener: Option<UnixListener>,
@@ -20,7 +20,7 @@ impl ListenConnector {
 }
 
 #[async_trait]
-impl Connector for ListenConnector {
+impl RpcConnector for ListenConnector {
     async fn connect(&self) -> Result<UnixStream> {
         if let Ok((stream, addr)) = self.listener.as_ref().unwrap().accept().await {
             debug!("New connection from {:?}", addr);
