@@ -1,3 +1,2 @@
 [workspace]
-
-members = ["karo-common-connection", "karo-common-messages", "karo-common-rpc"]
+members = ["karo-common-rpc"]
