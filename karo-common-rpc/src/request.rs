@@ -4,11 +4,17 @@ use tokio::net::UnixStream;
 
 use super::writer::RpcWriter;
 
+/// Client request
 pub struct RpcRequest {
+    /// Message id from the client
     message_id: i64,
+    /// Writer to repond to the message
     writer: RpcWriter,
+    /// Requested endpoint name
     endpoint: String,
+    /// Endpoint call params
     params: Bson,
+    /// Optional FD, which user can send to the client
     stream: Option<UnixStream>,
 }
 
@@ -49,10 +55,12 @@ impl RpcRequest {
         &mut self.stream
     }
 
+    /// Respond to the call
     pub async fn respond<T: Serialize>(&self, data: Result<T, crate::Error>) -> bool {
         self.writer.respond(self.message_id, data).await
     }
 
+    /// Respond with FD
     pub async fn respond_with_fd<T: Serialize>(
         &self,
         data: Result<T, crate::Error>,

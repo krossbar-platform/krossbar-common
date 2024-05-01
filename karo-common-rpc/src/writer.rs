@@ -3,7 +3,7 @@ use std::{pin::Pin, sync::Arc};
 use anyhow::bail;
 use async_send_fd::AsyncSendTokioStream;
 use futures::{lock::Mutex, stream::FusedStream, Future, FutureExt as _, StreamExt as _};
-use log::{debug, info, warn};
+use log::{debug, trace};
 use serde::{de::DeserializeOwned, Serialize};
 use tokio::net::{unix::OwnedWriteHalf, UnixStream};
 
@@ -17,24 +17,33 @@ use super::{
 type CallResultType<T> = crate::Result<Pin<Box<dyn Future<Output = crate::Result<T>> + Send>>>;
 type SubResultType<T> = crate::Result<Pin<Box<dyn FusedStream<Item = crate::Result<T>> + Send>>>;
 
+/// A writer to make RPC calls, or subscribe to the client
 #[derive(Clone)]
 pub struct RpcWriter {
+    /// Writer part of the socket
     socket: Arc<Mutex<OwnedWriteHalf>>,
+    /// Call registry to add outgoing calls into for later resolve
     registry: Arc<Mutex<CallsRegistry>>,
 }
 
 impl RpcWriter {
-    pub fn new(socket: OwnedWriteHalf, registry: Arc<Mutex<CallsRegistry>>) -> Self {
+    /// Make a new writer from a reading half of the stream
+    pub(crate) fn new(socket: OwnedWriteHalf, registry: Arc<Mutex<CallsRegistry>>) -> Self {
         Self {
             socket: Arc::new(Mutex::new(socket)),
             registry,
         }
     }
 
-    pub fn replace(&mut self, other: RpcWriter) {
+    /// Replace writer stream with a new handle if reconnected.
+    /// Existing handles will remain valid, and can be used to send data
+    pub(crate) fn replace(&mut self, other: RpcWriter) {
+        trace!("Replacing an RPC handle for a writer");
+
         self.socket = other.socket;
     }
 
+    /// Make a client call
     pub async fn call<P: Serialize, R: DeserializeOwned>(
         &self,
         endpoint: String,
@@ -43,12 +52,12 @@ impl RpcWriter {
         let data = bson::to_bson(data).map_err(|e| crate::Error::ParamsTypeError(e.to_string()))?;
         let (id, result) = self.registry.lock().await.add_call();
 
+        debug!("New {id} call to the {endpoint}: {data:?}");
+
         let message = RpcMessage {
             id,
-            data: message::RpcData::Call(endpoint, data),
+            data: message::RpcData::Call(endpoint.clone(), data),
         };
-
-        debug!("Call: {:?}", message);
 
         // In case we failed to send immediately send error response
         if let Err(e) = self.socket.lock().await.write_message(&message).await {
@@ -60,8 +69,6 @@ impl RpcWriter {
                 .resolve(id, Err(crate::Error::PeerDisconnected))
                 .await;
         }
-
-        debug!("Succesfully written a message");
 
         Ok(Box::pin(result.map(|chan_result| {
             match chan_result {
@@ -75,6 +82,7 @@ impl RpcWriter {
         })))
     }
 
+    /// Make a call with FD. Used by the hub to send peer FD's
     pub async fn call_fd<P: Serialize, R: DeserializeOwned>(
         &self,
         endpoint: String,
@@ -83,15 +91,17 @@ impl RpcWriter {
         let data = bson::to_bson(data).map_err(|e| crate::Error::ParamsTypeError(e.to_string()))?;
         let (id, result) = self.registry.lock().await.add_fd_call();
 
+        debug!("New {id} FD call to the {endpoint}: {data:?}");
+
         let message = RpcMessage {
             id,
             data: message::RpcData::Call(endpoint, data),
         };
 
-        debug!("Call fd: {:?}", message);
-
         // In case we failed to send immediately send error response
-        if let Err(_) = self.socket.lock().await.write_message(&message).await {
+        if let Err(e) = self.socket.lock().await.write_message(&message).await {
+            debug!("Error making an FD call: {e:?}");
+
             self.registry
                 .lock()
                 .await
@@ -111,6 +121,7 @@ impl RpcWriter {
         })))
     }
 
+    /// Subscribe to the `endpoint`
     pub async fn subscribe<P: Serialize, R: DeserializeOwned>(
         &self,
         endpoint: String,
@@ -119,15 +130,17 @@ impl RpcWriter {
         let data = bson::to_bson(data).map_err(|e| crate::Error::ParamsTypeError(e.to_string()))?;
         let (id, result) = self.registry.lock().await.add_subscription();
 
+        debug!("New {id} subscription to the {endpoint}: {data:?}");
+
         let message = RpcMessage {
             id,
             data: message::RpcData::Call(endpoint, data),
         };
 
-        debug!("Subscription: {:?}", message);
-
         // In case we failed to send immediately send error response
-        if let Err(_) = self.socket.lock().await.write_message(&message).await {
+        if let Err(e) = self.socket.lock().await.write_message(&message).await {
+            debug!("Error subscribing to a client: {e:?}");
+
             self.registry
                 .lock()
                 .await
@@ -143,6 +156,7 @@ impl RpcWriter {
         })))
     }
 
+    /// Make a connection request. Blocks until a connection response is received
     pub async fn connection_request(
         &self,
         service_name: &String,
@@ -153,12 +167,12 @@ impl RpcWriter {
             data: message::RpcData::ConnectionRequest(service_name.clone()),
         };
 
-        debug!("Connection request: {:?}", service_name);
+        debug!("New connection request to {service_name:?}");
 
         let mut socket_lock = self.socket.lock().await;
 
         if let Err(e) = socket_lock.write_message(&message).await {
-            warn!(
+            debug!(
                 "Failed to send connection request message: {}",
                 e.to_string()
             );
@@ -167,7 +181,7 @@ impl RpcWriter {
         }
 
         if let Err(e) = socket_lock.as_ref().send_stream(socket).await {
-            warn!(
+            debug!(
                 "Failed to send connection request socket: {}",
                 e.to_string()
             );
@@ -178,26 +192,28 @@ impl RpcWriter {
         Ok(())
     }
 
+    /// Respond to a call
     pub async fn respond<P: Serialize>(&self, message_id: i64, data: crate::Result<P>) -> bool {
         let data = data.and_then(|value| {
             bson::to_bson(&value).map_err(|e| crate::Error::ResultTypeError(e.to_string()))
         });
+
+        debug!("Responding to {message_id} with {data:?}");
 
         let message = RpcMessage {
             id: message_id,
             data: message::RpcData::Response(data),
         };
 
-        debug!("Response: {:?}", message);
-
         if let Err(_) = self.socket.lock().await.write_message(&message).await {
-            info!("Failed to srite client response");
+            debug!("Failed to write client response");
             return false;
         }
 
         return true;
     }
 
+    /// Respond to a call with FD
     pub async fn respond_with_fd<P: Serialize>(
         &self,
         message_id: i64,
@@ -208,21 +224,21 @@ impl RpcWriter {
             bson::to_bson(&value).map_err(|e| crate::Error::ResultTypeError(e.to_string()))
         });
 
+        debug!("Responding to {message_id} with FD and {data:?}");
+
         let message = RpcMessage {
             id: message_id,
             data: message::RpcData::FdResponse(data),
         };
 
-        debug!("Response with fd: {:?}", message);
-
         let mut lock = self.socket.lock().await;
 
         if let Err(_) = lock.write_message(&message).await {
-            info!("Failed to write client response");
+            debug!("Failed to write client response");
             return false;
         } else {
             if let Err(_) = lock.as_ref().send_stream(stream).await {
-                info!("Failed to send fd to a client");
+                debug!("Failed to send fd to a client");
                 return false;
             }
         }

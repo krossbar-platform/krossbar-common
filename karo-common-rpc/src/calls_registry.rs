@@ -8,11 +8,13 @@ use futures::{
     },
     SinkExt,
 };
-use log::{debug, info, warn};
+use log::{debug, info, trace, warn};
 use tokio::net::UnixStream;
 
 const BAD_RESPONSE_QUEUE_SIZE: usize = 100;
 
+/// A registry of calls, which can be added, resulting in a call id, and resolved after
+/// the client has responded
 pub struct CallsRegistry {
     id_counter: i64,
     calls: HashMap<i64, OneSender<crate::Result<Bson>>>,
@@ -35,6 +37,9 @@ impl CallsRegistry {
         let id = self.next_id();
 
         self.calls.insert(id, sender);
+
+        trace!("Add new call");
+
         (id, receiver)
     }
 
@@ -43,6 +48,9 @@ impl CallsRegistry {
         let id = self.next_id();
 
         self.fd_calls.insert(id, sender);
+
+        trace!("Add new FD call");
+
         (id, receiver)
     }
 
@@ -51,6 +59,9 @@ impl CallsRegistry {
         let id = self.next_id();
 
         self.subscriptions.insert(id, sender);
+
+        trace!("Add new subscription");
+
         (id, receiver)
     }
 
@@ -68,6 +79,8 @@ impl CallsRegistry {
                     if let Some(stream) = maybe_fd {
                         if let Err(_) = channel.send(Ok((doc, stream))) {
                             warn!("User wasn't waiting for an fd call response")
+                        } else {
+                            debug!("Succesfully resolved FD response for a message {message_id}")
                         }
                     } else {
                         warn!("Ok response for a stream request w/o the stream itself");
@@ -97,6 +110,8 @@ impl CallsRegistry {
         } else if let Some(channel) = self.subscriptions.get_mut(&message_id) {
             if let Err(_) = channel.send(response).await {
                 warn!("User wasn't waiting for a subscription response")
+            } else {
+                debug!("Succesfully resolved a call for a message: {message_id}")
             }
         } else {
             warn!("Unexpected peer response: {:?}", response)

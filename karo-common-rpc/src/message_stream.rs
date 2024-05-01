@@ -6,10 +6,12 @@ use log::trace;
 use serde::{de::DeserializeOwned, Serialize};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
+/// A trait which can read [serde::de::DeserializeOwned] from a stream
 pub trait AsyncReadMessage<T: DeserializeOwned> {
     async fn read_message(&mut self) -> Result<T>;
 }
 
+/// A trait which can write [serde::ser::Serialize] into a stream
 pub trait AsyncWriteMessage<T: Serialize> {
     async fn write_message(&mut self, message: &T) -> Result<()>;
 }

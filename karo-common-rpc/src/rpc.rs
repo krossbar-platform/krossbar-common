@@ -3,7 +3,7 @@ use std::{ops::Deref, sync::Arc};
 use async_send_fd::AsyncRecvTokioStream as _;
 use bson::Bson;
 use futures::lock::Mutex;
-use log::{debug, warn};
+use log::{debug, trace, warn};
 use tokio::net::{unix::OwnedReadHalf, UnixStream};
 
 use crate::{
@@ -14,14 +14,21 @@ use crate::{
     writer::{self, RpcWriter},
 };
 
+/// RPC handle to a client
 pub struct Rpc {
+    /// Socket reader to read incoming message
     socket: OwnedReadHalf,
+    /// Socker writer handle to send responses
     writer: writer::RpcWriter,
+    /// Call registry to resolve incoming responses
     calls_registry: Arc<Mutex<CallsRegistry>>,
 }
 
 impl Rpc {
+    /// Make new RPC wrapper from [tokio::net::UnixStream]
     pub fn new(stream: UnixStream) -> Self {
+        trace!("Making new RPC handle from a stream");
+
         let calls_registry = Arc::new(Mutex::new(CallsRegistry::new()));
         let (reader, writer) = stream.into_split();
 
@@ -32,17 +39,26 @@ impl Rpc {
         }
     }
 
-    pub fn replace(&mut self, other: Rpc) {
+    /// Replace rpc stream with a new handle if reconnected.
+    /// Existing subscriptions will be resend to the client.
+    /// Pending calls will be discarded
+    pub async fn replace(&mut self, other: Rpc) {
+        trace!("Replacing an RPC handle from a stream");
+
         let writer = other.writer().clone();
 
         self.socket = other.socket;
         self.writer.replace(writer);
+
+        self.calls_registry.lock().await.clear();
     }
 
+    /// Get client writer
     pub fn writer(&self) -> &RpcWriter {
         &self.writer
     }
 
+    /// Poll RPC handle, resolving incoming responses
     pub async fn poll(&mut self) -> Option<RpcRequest> {
         loop {
             let message: RpcMessage = self.socket.read_message().await.ok()?;
