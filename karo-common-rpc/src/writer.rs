@@ -46,7 +46,7 @@ impl RpcWriter {
     /// Make a client call
     pub async fn call<P: Serialize, R: DeserializeOwned>(
         &self,
-        endpoint: String,
+        endpoint: &str,
         data: &P,
     ) -> CallResultType<R> {
         let data = bson::to_bson(data).map_err(|e| crate::Error::ParamsTypeError(e.to_string()))?;
@@ -56,7 +56,7 @@ impl RpcWriter {
 
         let message = RpcMessage {
             id,
-            data: message::RpcData::Call(endpoint.clone(), data),
+            data: message::RpcData::Call(endpoint.to_owned(), data),
         };
 
         // In case we failed to send immediately send error response
@@ -85,7 +85,7 @@ impl RpcWriter {
     /// Make a call with FD. Used by the hub to send peer FD's
     pub async fn call_fd<P: Serialize, R: DeserializeOwned>(
         &self,
-        endpoint: String,
+        endpoint: &str,
         data: &P,
     ) -> CallResultType<(R, UnixStream)> {
         let data = bson::to_bson(data).map_err(|e| crate::Error::ParamsTypeError(e.to_string()))?;
@@ -95,7 +95,7 @@ impl RpcWriter {
 
         let message = RpcMessage {
             id,
-            data: message::RpcData::Call(endpoint, data),
+            data: message::RpcData::Call(endpoint.to_owned(), data),
         };
 
         // In case we failed to send immediately send error response
@@ -124,7 +124,7 @@ impl RpcWriter {
     /// Subscribe to the `endpoint`
     pub async fn subscribe<P: Serialize, R: DeserializeOwned>(
         &self,
-        endpoint: String,
+        endpoint: &str,
         data: &P,
     ) -> SubResultType<R> {
         let data = bson::to_bson(data).map_err(|e| crate::Error::ParamsTypeError(e.to_string()))?;
@@ -134,7 +134,7 @@ impl RpcWriter {
 
         let message = RpcMessage {
             id,
-            data: message::RpcData::Call(endpoint, data),
+            data: message::RpcData::Call(endpoint.to_owned(), data),
         };
 
         // In case we failed to send immediately send error response
@@ -159,12 +159,12 @@ impl RpcWriter {
     /// Make a connection request. Blocks until a connection response is received
     pub async fn connection_request(
         &self,
-        service_name: &String,
+        service_name: &str,
         socket: UnixStream,
     ) -> anyhow::Result<()> {
         let message = RpcMessage {
             id: 0,
-            data: message::RpcData::ConnectionRequest(service_name.clone()),
+            data: message::RpcData::ConnectionRequest(service_name.to_owned()),
         };
 
         debug!("New connection request to {service_name:?}");
