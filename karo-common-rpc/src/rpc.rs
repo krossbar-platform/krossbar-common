@@ -1,7 +1,6 @@
 use std::{ops::Deref, sync::Arc};
 
 use async_send_fd::AsyncRecvTokioStream as _;
-use bson::Bson;
 use futures::lock::Mutex;
 use log::{debug, trace, warn};
 use tokio::net::{unix::OwnedReadHalf, UnixStream};
@@ -10,7 +9,7 @@ use crate::{
     calls_registry::CallsRegistry,
     message::{self, RpcMessage},
     message_stream::AsyncReadMessage,
-    request::RpcRequest,
+    request::{Body, RpcRequest},
     writer::{self, RpcWriter},
 };
 
@@ -71,8 +70,7 @@ impl Rpc {
                         message.id,
                         self.writer.clone(),
                         endpoint,
-                        params,
-                        None,
+                        Body::Call(params),
                     ));
                 }
                 message::RpcData::ConnectionRequest(service_name) => {
@@ -82,8 +80,7 @@ impl Rpc {
                                 message.id,
                                 self.writer.clone(),
                                 "connect".to_owned(),
-                                Bson::String(service_name),
-                                Some(stream),
+                                Body::Fd(service_name, stream),
                             ))
                         }
                         Err(_) => warn!("Failed to recieve incoming connection fd"),
