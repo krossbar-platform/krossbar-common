@@ -6,6 +6,10 @@ const ENDPOINT_NAME: &str = "test_function";
 
 #[tokio::test]
 async fn test_simple_subscription() {
+    let _ = pretty_env_logger::formatted_builder()
+        .filter_level(log::LevelFilter::Debug)
+        .try_init();
+
     let (stream1, stream2) = UnixStream::pair().unwrap();
 
     let mut rpc1 = Rpc::new(stream1);
@@ -33,6 +37,10 @@ async fn test_simple_subscription() {
 
 #[tokio::test]
 async fn test_subscription_reconnect() {
+    let _ = pretty_env_logger::formatted_builder()
+        .filter_level(log::LevelFilter::Debug)
+        .try_init();
+
     let (stream1, stream2) = UnixStream::pair().unwrap();
 
     let mut rpc1 = Rpc::new(stream1);
