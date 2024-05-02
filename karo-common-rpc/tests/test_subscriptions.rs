@@ -1,4 +1,4 @@
-use futures::{select, FutureExt, StreamExt};
+use futures::{select, StreamExt};
 use karo_common_rpc::{request::Body, rpc::Rpc};
 use tokio::net::UnixStream;
 
@@ -18,7 +18,7 @@ async fn test_simple_subscription() {
     let call = rpc1.subscribe::<u32>(ENDPOINT_NAME).await.unwrap();
 
     // Poll the stream to receive the request
-    let mut request = rpc2.poll().await.unwrap();
+    let mut request = rpc2.next().await.unwrap();
     assert_eq!(request.endpoint(), ENDPOINT_NAME);
 
     assert!(matches!(request.take_body(), Some(Body::Subscription)));
@@ -31,7 +31,7 @@ async fn test_simple_subscription() {
             assert!(matches!(response[0], Ok(420)));
             assert!(matches!(response[1], Ok(421)));
         },
-        _ = rpc1.poll().fuse() => {}
+        _ = rpc1.next() => {}
     }
 }
 
@@ -50,7 +50,7 @@ async fn test_subscription_reconnect() {
         let call = rpc1.subscribe::<u32>(ENDPOINT_NAME).await.unwrap();
 
         // Poll the stream to receive the request
-        let mut request = rpc2.poll().await.unwrap();
+        let mut request = rpc2.next().await.unwrap();
         assert_eq!(request.endpoint(), ENDPOINT_NAME);
 
         assert!(matches!(request.take_body(), Some(Body::Subscription)));
@@ -63,7 +63,7 @@ async fn test_subscription_reconnect() {
                 assert!(matches!(response[0], Ok(420)));
                 assert!(matches!(response[1], Ok(421)));
             },
-            _ = rpc1.poll().fuse() => {}
+            _ = rpc1.next() => {}
         }
     }
 
@@ -76,7 +76,7 @@ async fn test_subscription_reconnect() {
         let call = rpc1.subscribe::<u32>(ENDPOINT_NAME).await.unwrap();
 
         // Poll the stream to receive the request
-        let mut request = rpc3.poll().await.unwrap();
+        let mut request = rpc3.next().await.unwrap();
         assert_eq!(request.endpoint(), ENDPOINT_NAME);
 
         assert!(matches!(request.take_body(), Some(Body::Subscription)));
@@ -89,7 +89,7 @@ async fn test_subscription_reconnect() {
                 assert!(matches!(response[0], Ok(420)));
                 assert!(matches!(response[1], Ok(421)));
             },
-            _ = rpc1.poll().fuse() => {}
+            _ = rpc1.next() => {}
         }
     }
 }

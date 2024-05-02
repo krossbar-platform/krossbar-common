@@ -1,4 +1,4 @@
-use futures::{select, FutureExt};
+use futures::{select, FutureExt, StreamExt};
 use karo_common_rpc::{request::Body, rpc::Rpc};
 use tokio::net::UnixStream;
 
@@ -9,7 +9,7 @@ async fn test_pair_call(mut rpc1: Rpc, mut rpc2: Rpc) {
     let call = rpc1.call::<u32, u32>(ENDPOINT_NAME, &42).await.unwrap();
 
     // Poll the stream to receive the request
-    let mut request = rpc2.poll().await.unwrap();
+    let mut request = rpc2.next().await.unwrap();
     assert_eq!(request.endpoint(), ENDPOINT_NAME);
 
     if let Some(Body::Call(bson)) = request.take_body() {
@@ -25,7 +25,7 @@ async fn test_pair_call(mut rpc1: Rpc, mut rpc2: Rpc) {
         response = call.fuse() => {
             assert_eq!(response.unwrap(), 420);
         },
-        _ = rpc1.poll().fuse() => {}
+        _ = rpc1.next() => {}
     }
 }
 
@@ -47,7 +47,7 @@ async fn test_fd_send() {
         .unwrap();
 
     // Poll the stream to receive the request
-    let mut request = rpc2.poll().await.unwrap();
+    let mut request = rpc2.next().await.unwrap();
     assert_eq!(request.endpoint(), "connect");
 
     let received_rpc = if let Some(Body::Fd(client_name, stream)) = request.take_body() {
@@ -74,7 +74,7 @@ async fn test_fd_call() {
     let call = rpc1.call_fd::<u32, u32>(ENDPOINT_NAME, &42).await.unwrap();
 
     // Poll the stream to receive the request
-    let mut request = rpc2.poll().await.unwrap();
+    let mut request = rpc2.next().await.unwrap();
     assert_eq!(request.endpoint(), ENDPOINT_NAME);
 
     if let Some(Body::Call(bson)) = request.take_body() {
@@ -93,7 +93,7 @@ async fn test_fd_call() {
             assert_eq!(data, 420);
             stream
         },
-        _ = rpc1.poll().fuse() => {
+        _ = rpc1.next() => {
             panic!("Should not return here")
         }
     };
