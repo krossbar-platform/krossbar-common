@@ -122,19 +122,14 @@ impl RpcWriter {
     }
 
     /// Subscribe to the `endpoint`
-    pub async fn subscribe<P: Serialize, R: DeserializeOwned>(
-        &self,
-        endpoint: &str,
-        data: &P,
-    ) -> SubResultType<R> {
-        let data = bson::to_bson(data).map_err(|e| crate::Error::ParamsTypeError(e.to_string()))?;
+    pub async fn subscribe<R: DeserializeOwned>(&self, endpoint: &str) -> SubResultType<R> {
         let (id, result) = self.registry.lock().await.add_subscription();
 
-        debug!("New {id} subscription to the {endpoint}: {data:?}");
+        debug!("New {id} subscription to the {endpoint}");
 
         let message = RpcMessage {
             id,
-            data: message::RpcData::Call(endpoint.to_owned(), data),
+            data: message::RpcData::Subscribtion(endpoint.to_owned()),
         };
 
         // In case we failed to send immediately send error response

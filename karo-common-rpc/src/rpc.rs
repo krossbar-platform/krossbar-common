@@ -73,6 +73,14 @@ impl Rpc {
                         Body::Call(params),
                     ));
                 }
+                message::RpcData::Subscribtion(endpoint) => {
+                    return Some(RpcRequest::new(
+                        message.id,
+                        self.writer.clone(),
+                        endpoint,
+                        Body::Subscription,
+                    ));
+                }
                 message::RpcData::ConnectionRequest(service_name) => {
                     match self.socket.as_ref().recv_stream().await {
                         Ok(stream) => {

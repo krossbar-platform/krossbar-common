@@ -11,21 +11,13 @@ async fn test_simple_subscription() {
     let mut rpc1 = Rpc::new(stream1);
     let mut rpc2 = Rpc::new(stream2);
 
-    let call = rpc1
-        .subscribe::<u32, u32>(ENDPOINT_NAME, &42)
-        .await
-        .unwrap();
+    let call = rpc1.subscribe::<u32>(ENDPOINT_NAME).await.unwrap();
 
     // Poll the stream to receive the request
     let mut request = rpc2.poll().await.unwrap();
     assert_eq!(request.endpoint(), ENDPOINT_NAME);
 
-    if let Some(Body::Call(bson)) = request.take_body() {
-        let request_body: u32 = bson::from_bson(bson).unwrap();
-        assert_eq!(request_body, 42);
-    } else {
-        assert!(false, "Invalid message type")
-    }
+    assert!(matches!(request.take_body(), Some(Body::Subscription)));
 
     assert!(request.respond(Ok(420)).await);
     assert!(request.respond(Ok(421)).await);
@@ -47,21 +39,13 @@ async fn test_subscription_reconnect() {
     {
         let mut rpc2 = Rpc::new(stream2);
 
-        let call = rpc1
-            .subscribe::<u32, u32>(ENDPOINT_NAME, &42)
-            .await
-            .unwrap();
+        let call = rpc1.subscribe::<u32>(ENDPOINT_NAME).await.unwrap();
 
         // Poll the stream to receive the request
         let mut request = rpc2.poll().await.unwrap();
         assert_eq!(request.endpoint(), ENDPOINT_NAME);
 
-        if let Some(Body::Call(bson)) = request.take_body() {
-            let request_body: u32 = bson::from_bson(bson).unwrap();
-            assert_eq!(request_body, 42);
-        } else {
-            assert!(false, "Invalid message type")
-        }
+        assert!(matches!(request.take_body(), Some(Body::Subscription)));
 
         assert!(request.respond(Ok(420)).await);
         assert!(request.respond(Ok(421)).await);
@@ -81,21 +65,13 @@ async fn test_subscription_reconnect() {
         rpc1.replace(Rpc::new(stream1)).await;
         let mut rpc3 = Rpc::new(stream3);
 
-        let call = rpc1
-            .subscribe::<u32, u32>(ENDPOINT_NAME, &42)
-            .await
-            .unwrap();
+        let call = rpc1.subscribe::<u32>(ENDPOINT_NAME).await.unwrap();
 
         // Poll the stream to receive the request
         let mut request = rpc3.poll().await.unwrap();
         assert_eq!(request.endpoint(), ENDPOINT_NAME);
 
-        if let Some(Body::Call(bson)) = request.take_body() {
-            let request_body: u32 = bson::from_bson(bson).unwrap();
-            assert_eq!(request_body, 42);
-        } else {
-            assert!(false, "Invalid message type")
-        }
+        assert!(matches!(request.take_body(), Some(Body::Subscription)));
 
         assert!(request.respond(Ok(420)).await);
         assert!(request.respond(Ok(421)).await);
