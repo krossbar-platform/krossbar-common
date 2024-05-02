@@ -7,10 +7,10 @@ pub struct RpcMessage {
     pub data: RpcData,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum RpcData {
     Call(String, Bson),
-    Subscribtion(String),
+    Subscription(String),
     ConnectionRequest(String),
     Response(crate::Result<Bson>),
     FdResponse(crate::Result<Bson>),

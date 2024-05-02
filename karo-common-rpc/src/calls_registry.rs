@@ -11,15 +11,22 @@ use futures::{
 use log::{debug, info, trace, warn};
 use tokio::net::UnixStream;
 
+use crate::message::{self};
+
 const BAD_RESPONSE_QUEUE_SIZE: usize = 100;
 
 /// A registry of calls, which can be added, resulting in a call id, and resolved after
 /// the client has responded
 pub struct CallsRegistry {
     id_counter: i64,
+    /// Active calls
     calls: HashMap<i64, OneSender<crate::Result<Bson>>>,
+    /// Active FD calls
     fd_calls: HashMap<i64, OneSender<crate::Result<(Bson, UnixStream)>>>,
+    /// Current subscriptions
     subscriptions: HashMap<i64, Sender<crate::Result<Bson>>>,
+    /// Persistent calls to send on reconnect
+    active_subscriptions: HashMap<i64, message::RpcData>,
 }
 
 impl CallsRegistry {
@@ -29,7 +36,14 @@ impl CallsRegistry {
             calls: HashMap::new(),
             fd_calls: HashMap::new(),
             subscriptions: HashMap::new(),
+            active_subscriptions: HashMap::new(),
         }
+    }
+
+    pub fn add_persistent_call(&mut self, id: i64, data: message::RpcData) {
+        assert!(!self.active_subscriptions.contains_key(&id));
+
+        self.active_subscriptions.insert(id, data);
     }
 
     pub fn add_call(&mut self) -> (i64, OneReceiver<crate::Result<Bson>>) {
@@ -101,26 +115,39 @@ impl CallsRegistry {
     }
 
     pub async fn resolve(&mut self, message_id: i64, response: crate::Result<Bson>) {
-        debug!("Incoming response for {message_id}: {response:?}");
-
+        // Try to resolve an active call
         if let Some(channel) = self.calls.remove(&message_id) {
             if let Err(_) = channel.send(response) {
-                warn!("User wasn't waiting for a call response")
+                warn!("User dropped call handle. Failed to send a response")
+            } else {
+                debug!("Succesfully resolved {message_id} call")
             }
         } else if let Some(channel) = self.subscriptions.get_mut(&message_id) {
-            if let Err(_) = channel.send(response).await {
-                warn!("User wasn't waiting for a subscription response")
+            // Subscription is no longer active
+            if !self.active_subscriptions.contains_key(&message_id) {
+                debug!("Inactive subscription response")
+            // Try to resolve an active subscription
+            } else if let Err(_) = channel.send(response).await {
+                warn!("User dropped subscriptions handle. Failed to send a response");
+
+                // Remove subscription as no one is waiting for it anymore
+                self.active_subscriptions.remove(&message_id);
+            // No such call
             } else {
-                debug!("Succesfully resolved a call for a message: {message_id}")
+                debug!("Succesfully resolved {message_id} subscription")
             }
         } else {
             warn!("Unexpected peer response: {:?}", response)
         }
     }
 
-    pub fn clear(&mut self) {
+    pub fn clear_pending_calls(&mut self) {
         info!("Clearing calls queue");
         self.calls.clear()
+    }
+
+    pub fn active_subscriptions(&self) -> impl Iterator<Item = (&i64, &message::RpcData)> {
+        self.active_subscriptions.iter()
     }
 
     fn next_id(&mut self) -> i64 {

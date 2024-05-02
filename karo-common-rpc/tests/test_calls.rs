@@ -71,7 +71,7 @@ async fn test_call_reconnect() {
     let (stream1, stream3) = UnixStream::pair().unwrap();
 
     {
-        rpc1.replace(Rpc::new(stream1)).await;
+        rpc1.on_reconnected(Rpc::new(stream1)).await;
         let mut rpc3 = Rpc::new(stream3);
 
         let call = rpc1.call::<u32, u32>(ENDPOINT_NAME, &42).await.unwrap();

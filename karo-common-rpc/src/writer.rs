@@ -3,7 +3,7 @@ use std::{pin::Pin, sync::Arc};
 use anyhow::bail;
 use async_send_fd::AsyncSendTokioStream;
 use futures::{lock::Mutex, stream::FusedStream, Future, FutureExt as _, StreamExt as _};
-use log::{debug, trace};
+use log::{debug, trace, warn};
 use serde::{de::DeserializeOwned, Serialize};
 use tokio::net::{unix::OwnedWriteHalf, UnixStream};
 
@@ -37,10 +37,31 @@ impl RpcWriter {
 
     /// Replace writer stream with a new handle if reconnected.
     /// Existing handles will remain valid, and can be used to send data
-    pub(crate) fn replace(&mut self, other: RpcWriter) {
-        trace!("Replacing an RPC handle for a writer");
+    pub(crate) async fn on_reconnected(&mut self, other: RpcWriter) {
+        trace!("Writer reconnected");
 
         self.socket = other.socket;
+
+        let mut registry_lock = self.registry.lock().await;
+        // Clear pending calls as we're not going to receive responses
+        registry_lock.clear_pending_calls();
+
+        debug!("Resending active subscriptions");
+
+        let mut socket_lock = self.socket.lock().await;
+        for (message_id, data) in registry_lock.active_subscriptions() {
+            debug!("Sending subsription {message_id}: {data:?}");
+
+            let message = RpcMessage {
+                id: *message_id,
+                data: data.clone(),
+            };
+
+            // In case we failed to send immediately send error response
+            if let Err(e) = socket_lock.write_message(&message).await {
+                warn!("Failed to resent persisten call to a client: {e:?}")
+            }
+        }
     }
 
     /// Make a client call
@@ -123,14 +144,20 @@ impl RpcWriter {
 
     /// Subscribe to the `endpoint`
     pub async fn subscribe<R: DeserializeOwned>(&self, endpoint: &str) -> SubResultType<R> {
-        let (id, result) = self.registry.lock().await.add_subscription();
+        let mut registry_lock = self.registry.lock().await;
 
-        debug!("New {id} subscription to the {endpoint}");
+        let (id, result) = registry_lock.add_subscription();
 
+        debug!("New subscription with id {id} to the {endpoint}");
+
+        let data = message::RpcData::Subscription(endpoint.to_owned());
         let message = RpcMessage {
             id,
-            data: message::RpcData::Subscribtion(endpoint.to_owned()),
+            data: data.clone(),
         };
+
+        // Add persistent call to resubscribe on reconnect.
+        registry_lock.add_persistent_call(id, data);
 
         // In case we failed to send immediately send error response
         if let Err(e) = self.socket.lock().await.write_message(&message).await {

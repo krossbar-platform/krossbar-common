@@ -7,7 +7,7 @@ use std::{
 
 use async_send_fd::AsyncRecvTokioStream as _;
 use futures::{lock::Mutex, stream::FusedStream, Future, Stream};
-use log::{debug, trace, warn};
+use log::{debug, info, trace, warn};
 use tokio::net::{unix::OwnedReadHalf, UnixStream};
 
 use crate::{
@@ -46,15 +46,13 @@ impl Rpc {
     /// Replace rpc stream with a new handle if reconnected.
     /// Existing subscriptions will be resend to the client.
     /// Pending calls will be discarded
-    pub async fn replace(&mut self, other: Rpc) {
-        trace!("Replacing an RPC handle from a stream");
+    pub async fn on_reconnected(&mut self, other: Rpc) {
+        debug!("RPC reconnected");
 
         let writer = other.writer().clone();
 
         self.socket = other.socket;
-        self.writer.replace(writer);
-
-        self.calls_registry.lock().await.clear();
+        self.writer.on_reconnected(writer).await;
     }
 
     /// Get client writer
@@ -65,7 +63,16 @@ impl Rpc {
     /// Poll RPC handle, resolving incoming responses
     async fn poll(&mut self) -> Option<RpcRequest> {
         loop {
-            let message: RpcMessage = self.socket.read_message().await.ok()?;
+            let message: RpcMessage = match self.socket.read_message().await {
+                Ok(message) => message,
+                Err(e) => {
+                    info!(
+                        "Failed to read incoming message. Client disconnected?: {}",
+                        e.to_string()
+                    );
+                    return None;
+                }
+            };
 
             debug!("Incoming message: {:?}", message);
 
@@ -78,7 +85,7 @@ impl Rpc {
                         Body::Call(params),
                     ));
                 }
-                message::RpcData::Subscribtion(endpoint) => {
+                message::RpcData::Subscription(endpoint) => {
                     return Some(RpcRequest::new(
                         message.id,
                         self.writer.clone(),
