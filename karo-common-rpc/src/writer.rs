@@ -48,7 +48,6 @@ impl RpcWriter {
 
         debug!("Resending active subscriptions");
 
-        let mut socket_lock = self.socket.lock().await;
         for (message_id, data) in registry_lock.active_subscriptions() {
             debug!("Sending subsription {message_id}: {data:?}");
 
@@ -58,7 +57,7 @@ impl RpcWriter {
             };
 
             // In case we failed to send immediately send error response
-            if let Err(e) = socket_lock.write_message(&message).await {
+            if let Err(e) = self.socket_write(&message).await {
                 warn!("Failed to resent persisten call to a client: {e:?}")
             }
         }
@@ -81,7 +80,7 @@ impl RpcWriter {
         };
 
         // In case we failed to send immediately send error response
-        if let Err(e) = self.socket.lock().await.write_message(&message).await {
+        if let Err(e) = self.socket_write(&message).await {
             debug!("Error making a call: {e:?}");
 
             self.registry
@@ -120,7 +119,7 @@ impl RpcWriter {
         };
 
         // In case we failed to send immediately send error response
-        if let Err(e) = self.socket.lock().await.write_message(&message).await {
+        if let Err(e) = self.socket_write(&message).await {
             debug!("Error making an FD call: {e:?}");
 
             self.registry
@@ -160,7 +159,7 @@ impl RpcWriter {
         registry_lock.add_persistent_call(id, data);
 
         // In case we failed to send immediately send error response
-        if let Err(e) = self.socket.lock().await.write_message(&message).await {
+        if let Err(e) = self.socket_write(&message).await {
             debug!("Error subscribing to a client: {e:?}");
 
             self.registry
@@ -191,9 +190,7 @@ impl RpcWriter {
 
         debug!("New connection request to {service_name:?}");
 
-        let mut socket_lock = self.socket.lock().await;
-
-        if let Err(e) = socket_lock.write_message(&message).await {
+        if let Err(e) = self.socket_write(&message).await {
             debug!(
                 "Failed to send connection request message: {}",
                 e.to_string()
@@ -202,7 +199,7 @@ impl RpcWriter {
             bail!(e);
         }
 
-        if let Err(e) = socket_lock.as_ref().send_stream(socket).await {
+        if let Err(e) = self.socket.lock().await.as_ref().send_stream(socket).await {
             debug!(
                 "Failed to send connection request socket: {}",
                 e.to_string()
@@ -227,7 +224,7 @@ impl RpcWriter {
             data: message::RpcData::Response(data),
         };
 
-        if let Err(_) = self.socket.lock().await.write_message(&message).await {
+        if let Err(_) = self.socket_write(&message).await {
             debug!("Failed to write client response");
             return false;
         }
@@ -253,18 +250,29 @@ impl RpcWriter {
             data: message::RpcData::FdResponse(data),
         };
 
-        let mut lock = self.socket.lock().await;
-
-        if let Err(_) = lock.write_message(&message).await {
-            debug!("Failed to write client response");
+        if let Err(e) = self.socket_write(&message).await {
+            debug!("Failed to write client response: {}", e.to_string());
             return false;
         } else {
-            if let Err(_) = lock.as_ref().send_stream(stream).await {
-                debug!("Failed to send fd to a client");
+            if let Err(e) = self.socket.lock().await.as_ref().send_stream(stream).await {
+                debug!("Failed to send fd to a client: {}", e.to_string());
                 return false;
             }
         }
 
         return true;
+    }
+
+    /// Write message into a socket and monitor
+    async fn socket_write(&self, message: &RpcMessage) -> anyhow::Result<()> {
+        let result = self.socket.lock().await.write_message(&message).await;
+
+        #[cfg(feature = "monitor")]
+        {
+            use crate::monitor::{Direction, Monitor};
+            Monitor::send(message, Direction::Ougoing).await;
+        }
+
+        result
     }
 }

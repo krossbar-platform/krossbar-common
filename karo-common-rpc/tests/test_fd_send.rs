@@ -2,7 +2,7 @@ use futures::{select, FutureExt, StreamExt};
 use karo_common_rpc::{request::Body, rpc::Rpc};
 use tokio::net::UnixStream;
 
-const CLIENT_NAME: &str = "test_function";
+const CLIENT_NAME: &str = "com.test.client";
 const ENDPOINT_NAME: &str = "test_function";
 
 async fn test_pair_call(mut rpc1: Rpc, mut rpc2: Rpc) {
@@ -61,7 +61,7 @@ async fn test_fd_send() {
 }
 
 #[tokio::test]
-async fn test_fd_call() {
+async fn test_fd_response() {
     let _ = pretty_env_logger::formatted_builder()
         .filter_level(log::LevelFilter::Debug)
         .try_init();

@@ -76,6 +76,12 @@ impl Rpc {
 
             debug!("Incoming message: {:?}", message);
 
+            #[cfg(feature = "monitor")]
+            {
+                use crate::monitor::{Direction, Monitor};
+                Monitor::send(&message, Direction::Incoming).await;
+            }
+
             match message.data {
                 message::RpcData::Call(endpoint, params) => {
                     return Some(RpcRequest::new(
