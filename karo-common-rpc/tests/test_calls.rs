@@ -1,4 +1,4 @@
-use futures::{select, FutureExt, StreamExt};
+use futures::{select, FutureExt};
 use karo_common_rpc::{request::Body, rpc::Rpc};
 use tokio::{io::AsyncWriteExt, net::UnixStream};
 
@@ -18,7 +18,7 @@ async fn test_simple_call() {
     let call = rpc1.call::<u32, u32>(ENDPOINT_NAME, &42).await.unwrap();
 
     // Poll the stream to receive the request
-    let mut request = rpc2.next().await.unwrap();
+    let mut request: karo_common_rpc::request::RpcRequest = rpc2.poll().await.unwrap();
     assert_eq!(request.endpoint(), ENDPOINT_NAME);
 
     if let Some(Body::Call(bson)) = request.take_body() {
@@ -34,7 +34,7 @@ async fn test_simple_call() {
         response = call.fuse() => {
             assert_eq!(response.unwrap(), 420);
         },
-        _ = rpc1.next() => {}
+        _ = rpc1.poll().fuse() => {}
     }
 }
 
@@ -49,7 +49,7 @@ async fn test_call_reconnect() {
         let call = rpc1.call::<u32, u32>(ENDPOINT_NAME, &42).await.unwrap();
 
         // Poll the stream to receive the request
-        let mut request = rpc2.next().await.unwrap();
+        let mut request = rpc2.poll().await.unwrap();
 
         if let Some(Body::Call(bson)) = request.take_body() {
             let request_body: u32 = bson::from_bson(bson).unwrap();
@@ -64,7 +64,7 @@ async fn test_call_reconnect() {
             response = call.fuse() => {
                 assert_eq!(response.unwrap(), 420);
             },
-            _ = rpc1.next() => {}
+            _ = rpc1.poll().fuse() => {}
         }
     }
 
@@ -77,7 +77,7 @@ async fn test_call_reconnect() {
         let call = rpc1.call::<u32, u32>(ENDPOINT_NAME, &42).await.unwrap();
 
         // Poll the stream to receive the request
-        let mut request = rpc3.next().await.unwrap();
+        let mut request = rpc3.poll().await.unwrap();
         assert_eq!(request.endpoint(), ENDPOINT_NAME);
 
         if let Some(Body::Call(bson)) = request.take_body() {
@@ -93,7 +93,7 @@ async fn test_call_reconnect() {
             response = call.fuse() => {
                 assert_eq!(response.unwrap(), 421);
             },
-            _ = rpc1.next() => {}
+            _ = rpc1.poll().fuse() => {}
         }
     }
 }
@@ -124,7 +124,7 @@ async fn test_result_type_error() {
     let call = rpc1.call::<u32, String>(ENDPOINT_NAME, &42).await.unwrap();
 
     // Poll the stream to receive the request
-    let request = rpc2.next().await.unwrap();
+    let request = rpc2.poll().await.unwrap();
 
     assert!(request.respond(Ok(420)).await);
 
@@ -135,7 +135,7 @@ async fn test_result_type_error() {
                 Err(karo_common_rpc::Error::ResultTypeError(_))
             ))
         },
-        _ = rpc1.next() => {}
+        _ = rpc1.poll().fuse() => {}
     }
 }
 
@@ -170,7 +170,7 @@ async fn test_user_error() {
     let call = rpc1.call::<u32, u32>(ENDPOINT_NAME, &42).await.unwrap();
 
     // Poll the stream to receive the request
-    let mut request = rpc2.next().await.unwrap();
+    let mut request = rpc2.poll().await.unwrap();
     assert_eq!(request.endpoint(), ENDPOINT_NAME);
 
     if let Some(Body::Call(bson)) = request.take_body() {
@@ -192,6 +192,6 @@ async fn test_user_error() {
         response = call.fuse() => {
             assert!(matches!(response, Err(karo_common_rpc::Error::EndpointError(_))));
         },
-        _ = rpc1.next() => {}
+        _ = rpc1.poll().fuse() => {}
     }
 }

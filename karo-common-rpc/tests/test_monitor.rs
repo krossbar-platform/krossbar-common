@@ -34,7 +34,7 @@ async fn test_monitor_fd_send() {
         .unwrap();
 
     // Poll the stream to receive the request
-    let request = rpc2.next().await.unwrap();
+    let request = rpc2.poll().await.unwrap();
     assert_eq!(request.endpoint(), "connect");
 
     let mut monitor_receiver = Monitor::make_receiver(monitor_receive);
@@ -74,7 +74,7 @@ async fn test_monitor_fd_response() {
     let call = rpc1.call_fd::<u32, u32>(ENDPOINT_NAME, &42).await.unwrap();
 
     // Poll the stream to receive the request
-    let request = rpc2.next().await.unwrap();
+    let request = rpc2.poll().await.unwrap();
 
     // Respond
     let (_send_stream1, send_stream2) = UnixStream::pair().unwrap();
@@ -87,7 +87,7 @@ async fn test_monitor_fd_response() {
             assert_eq!(data, 420);
             stream
         },
-        _ = rpc1.next() => {
+        _ = rpc1.poll().fuse() => {
             panic!("Should not return here")
         }
     };
@@ -141,19 +141,19 @@ async fn test_monitor_subscription() {
     let mut subscription = rpc1.subscribe::<u32>(ENDPOINT_NAME).await.unwrap();
 
     // Send responses
-    let request = rpc2.next().await.unwrap();
+    let request = rpc2.poll().await.unwrap();
     assert!(request.respond(Ok(420)).await);
     assert!(request.respond(Ok(421)).await);
 
     // Receive responses
     select! {
         _ = subscription.next() => {},
-        _ = rpc1.next() => {}
+        _ = rpc1.poll().fuse() => {}
     };
 
     select! {
         _ = subscription.next() => {},
-        _ = rpc1.next() => {}
+        _ = rpc1.poll().fuse() => {}
     };
 
     let mut monitor_receiver = Monitor::make_receiver(monitor_receive);

@@ -1,4 +1,4 @@
-use futures::{select, StreamExt};
+use futures::{select, FutureExt, StreamExt};
 use karo_common_rpc::{request::Body, rpc::Rpc};
 use tokio::net::UnixStream;
 
@@ -18,7 +18,7 @@ async fn test_simple_subscription() {
     let call = rpc1.subscribe::<u32>(ENDPOINT_NAME).await.unwrap();
 
     // Poll the stream to receive the request
-    let mut request = rpc2.next().await.unwrap();
+    let mut request = rpc2.poll().await.unwrap();
     assert_eq!(request.endpoint(), ENDPOINT_NAME);
 
     assert!(matches!(request.take_body(), Some(Body::Subscription)));
@@ -31,7 +31,7 @@ async fn test_simple_subscription() {
             assert!(matches!(response[0], Ok(420)));
             assert!(matches!(response[1], Ok(421)));
         },
-        _ = rpc1.next() => {}
+        _ = rpc1.poll().fuse() => {}
     }
 }
 
@@ -50,7 +50,7 @@ async fn test_subscription_reconnect() {
         let mut subscription = rpc1.subscribe::<u32>(ENDPOINT_NAME).await.unwrap();
 
         // Poll the stream to receive the request
-        let mut request = rpc2.next().await.unwrap();
+        let mut request = rpc2.poll().await.unwrap();
         assert_eq!(request.endpoint(), ENDPOINT_NAME);
 
         assert!(matches!(request.take_body(), Some(Body::Subscription)));
@@ -62,14 +62,14 @@ async fn test_subscription_reconnect() {
             response = subscription.next() => {
                 assert!(matches!(response.unwrap(), Ok(420)));
             },
-            _ = rpc1.next() => {}
+            _ = rpc1.poll().fuse() => {}
         };
 
         select! {
             response = subscription.next() => {
                 assert!(matches!(response.unwrap(), Ok(421)));
             },
-            _ = rpc1.next() => {}
+            _ = rpc1.poll().fuse() => {}
         };
 
         subscription
@@ -82,7 +82,7 @@ async fn test_subscription_reconnect() {
         let mut rpc3 = Rpc::new(stream3);
 
         // Get reconnection subscription request
-        let mut request = rpc3.next().await.unwrap();
+        let mut request = rpc3.poll().await.unwrap();
         assert_eq!(request.endpoint(), ENDPOINT_NAME);
 
         assert!(matches!(request.take_body(), Some(Body::Subscription)));
@@ -95,7 +95,7 @@ async fn test_subscription_reconnect() {
                 assert!(matches!(response[0], Ok(420)));
                 assert!(matches!(response[1], Ok(421)));
             },
-            _ = rpc1.next() => {}
+            _ = rpc1.poll().fuse() => {}
         }
     }
 }
@@ -115,7 +115,7 @@ async fn test_subscription_reconnect_new_request() {
         let mut subscription = rpc1.subscribe::<u32>(ENDPOINT_NAME).await.unwrap();
 
         // Poll the stream to receive the request
-        let mut request = rpc2.next().await.unwrap();
+        let mut request = rpc2.poll().await.unwrap();
         assert_eq!(request.endpoint(), ENDPOINT_NAME);
 
         assert!(matches!(request.take_body(), Some(Body::Subscription)));
@@ -127,14 +127,14 @@ async fn test_subscription_reconnect_new_request() {
             response = subscription.next() => {
                 assert!(matches!(response.unwrap(), Ok(420)));
             },
-            _ = rpc1.next() => {}
+            _ = rpc1.poll().fuse() => {}
         };
 
         select! {
             response = subscription.next() => {
                 assert!(matches!(response.unwrap(), Ok(421)));
             },
-            _ = rpc1.next() => {}
+            _ = rpc1.poll().fuse() => {}
         };
     }
 
@@ -147,10 +147,10 @@ async fn test_subscription_reconnect_new_request() {
         let subscription2 = rpc1.subscribe::<u32>(ENDPOINT_NAME).await.unwrap();
 
         // This is a resubscription request
-        let _ = rpc3.next().await.unwrap();
+        let _ = rpc3.poll().await.unwrap();
 
         // This is a new subscription request
-        let mut sub2_request = rpc3.next().await.unwrap();
+        let mut sub2_request = rpc3.poll().await.unwrap();
         assert_eq!(sub2_request.endpoint(), ENDPOINT_NAME);
 
         assert!(matches!(sub2_request.take_body(), Some(Body::Subscription)));
@@ -163,7 +163,7 @@ async fn test_subscription_reconnect_new_request() {
                 assert!(matches!(response[0], Ok(420)));
                 assert!(matches!(response[1], Ok(421)));
             },
-            _ = rpc1.next() => {}
+            _ = rpc1.poll().fuse() => {}
         }
     }
 }

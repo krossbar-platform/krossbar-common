@@ -1,12 +1,7 @@
-use std::{
-    ops::Deref,
-    pin::{pin, Pin},
-    sync::Arc,
-    task::{Context, Poll},
-};
+use std::{ops::Deref, sync::Arc};
 
 use async_send_fd::AsyncRecvTokioStream as _;
-use futures::{lock::Mutex, stream::FusedStream, Future, Stream};
+use futures::lock::Mutex;
 use log::{debug, info, trace, warn};
 use tokio::net::{unix::OwnedReadHalf, UnixStream};
 
@@ -61,7 +56,7 @@ impl Rpc {
     }
 
     /// Poll RPC handle, resolving incoming responses
-    async fn poll(&mut self) -> Option<RpcRequest> {
+    pub async fn poll(&mut self) -> Option<RpcRequest> {
         loop {
             let message: RpcMessage = match self.socket.read_message().await {
                 Ok(message) => message,
@@ -148,20 +143,5 @@ impl Deref for Rpc {
 
     fn deref(&self) -> &Self::Target {
         &self.writer
-    }
-}
-
-impl Stream for Rpc {
-    type Item = RpcRequest;
-
-    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        pin!(self.get_mut().poll()).poll(cx)
-    }
-}
-
-impl FusedStream for Rpc {
-    /// Rpc never terminates, because after we've reconnected, we can read it again.
-    fn is_terminated(&self) -> bool {
-        false
     }
 }
