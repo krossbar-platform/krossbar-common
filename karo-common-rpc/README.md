@@ -1,4 +1,13 @@
-/*!
+[![MIT licensed][mit-badge]][mit-url]
+[![Build Status][actions-badge]][actions-url]
+
+[mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
+[mit-url]: https://github.com/karo-platform/karo-common/blob/main/LICENSE
+[actions-badge]: https://github.com/karo-platform/karo-common/actions/workflows/rust.yml/badge.svg
+[actions-url]: https://github.com/karo-platform/karo-common/actions/workflows/rust.yml
+
+# karo-common-rpc
+
 RPC library used by Karo platform for communication.
 
 The library:
@@ -9,10 +18,10 @@ The library:
 
 Use [rpc::Rpc::poll] method to poll the stream. This includes waiting for a call or subscriptions response.
 
-# Examples
+## Examples
 
 RPC calls:
-```
+```rust
 let stream = UnixStream::connect("/tmp/hub.sock").await.unwrap();
 let mut rpc = Rpc::new(stream);
 
@@ -27,7 +36,7 @@ select! {
 ```
 
 RPC subscription:
-```
+```rust
 let stream = UnixStream::connect("/tmp/hub.sock").await.unwrap();
 let mut rpc = Rpc::new(stream);
 
@@ -42,7 +51,7 @@ select! {
 ```
 
 Polling imcoming messages:
-```
+```rust
 let stream = UnixStream::connect("/tmp/hub.sock").await.unwrap();
 let mut rpc = Rpc::new(stream);
 
@@ -75,21 +84,3 @@ while true {
 ```
 
 See `tests/` for more examples.
-*/
-
-mod calls_registry;
-mod error;
-mod message;
-mod message_stream;
-#[cfg(feature = "monitor")]
-pub mod monitor;
-pub mod request;
-pub mod rpc;
-pub mod writer;
-
-pub use error::*;
-
-#[cfg(feature = "impl-monitor")]
-pub use message::*;
-#[cfg(feature = "impl-monitor")]
-pub use monitor::*;
