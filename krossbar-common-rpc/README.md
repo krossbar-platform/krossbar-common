@@ -2,13 +2,13 @@
 [![Build Status][actions-badge]][actions-url]
 
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
-[mit-url]: https://github.com/karo-platform/karo-common/blob/main/LICENSE
-[actions-badge]: https://github.com/karo-platform/karo-common/actions/workflows/rust.yml/badge.svg
-[actions-url]: https://github.com/karo-platform/karo-common/actions/workflows/rust.yml
+[mit-url]: https://github.com/krossbar-platform/krossbar-common/blob/main/LICENSE
+[actions-badge]: https://github.com/krossbar-platform/krossbar-common/actions/workflows/rust.yml/badge.svg
+[actions-url]: https://github.com/krossbar-platform/krossbar-common/actions/workflows/rust.yml
 
-# karo-common-rpc
+# krossbar-common-rpc
 
-RPC library used by Karo platform for communication.
+RPC library used by Krossbar platform for communication.
 
 The library:
 - Receives [tokio::net::UnixStream] and returns RPC handle;
@@ -25,7 +25,7 @@ RPC calls:
 use futures::{select, FutureExt};
 use tokio::net::UnixStream;
 
-use karo_common_rpc::rpc::Rpc;
+use krossbar_common_rpc::rpc::Rpc;
 
 async fn call() {
     let stream = UnixStream::connect("/tmp/hub.sock").await.unwrap();
@@ -47,7 +47,7 @@ RPC subscription:
 use futures::{select, FutureExt, StreamExt};
 use tokio::net::UnixStream;
 
-use karo_common_rpc::rpc::Rpc;
+use krossbar_common_rpc::rpc::Rpc;
 
 async fn subscribe() {
     let stream = UnixStream::connect("/tmp/hub.sock").await.unwrap();
@@ -56,7 +56,7 @@ async fn subscribe() {
     let subscription = rpc.subscribe::<u32>("signal").await.unwrap();
 
     select! {
-        response = subscription.take(2).collect::<Vec<karo_common_rpc::Result<u32>>>() => {
+        response = subscription.take(2).collect::<Vec<krossbar_common_rpc::Result<u32>>>() => {
             println!("Subscription response: {response:?}")
         },
         _ = rpc.poll().fuse() => {}
@@ -69,7 +69,7 @@ Polling imcoming messages:
 use futures::{select, FutureExt};
 use tokio::net::UnixStream;
 
-use karo_common_rpc::{rpc::Rpc, request::Body};
+use krossbar_common_rpc::{rpc::Rpc, request::Body};
 
 async fn poll() {
     let stream = UnixStream::connect("/tmp/hub.sock").await.unwrap();

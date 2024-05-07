@@ -1,5 +1,5 @@
 use futures::{select, FutureExt};
-use karo_common_rpc::{request::Body, rpc::Rpc};
+use krossbar_common_rpc::{request::Body, rpc::Rpc};
 use tokio::{io::AsyncWriteExt, net::UnixStream};
 
 const ENDPOINT_NAME: &str = "test_function";
@@ -18,7 +18,7 @@ async fn test_simple_call() {
     let call = rpc1.call::<u32, u32>(ENDPOINT_NAME, &42).await.unwrap();
 
     // Poll the stream to receive the request
-    let mut request: karo_common_rpc::request::RpcRequest = rpc2.poll().await.unwrap();
+    let mut request: krossbar_common_rpc::request::RpcRequest = rpc2.poll().await.unwrap();
     assert_eq!(request.endpoint(), ENDPOINT_NAME);
 
     if let Some(Body::Call(bson)) = request.take_body() {
@@ -110,7 +110,7 @@ async fn test_bson_param_error() {
 
     assert!(matches!(
         call,
-        Err(karo_common_rpc::Error::ParamsTypeError(_))
+        Err(krossbar_common_rpc::Error::ParamsTypeError(_))
     ))
 }
 
@@ -132,7 +132,7 @@ async fn test_result_type_error() {
         response = call.fuse() => {
             assert!(matches!(
                 response,
-                Err(karo_common_rpc::Error::ResultTypeError(_))
+                Err(krossbar_common_rpc::Error::ResultTypeError(_))
             ))
         },
         _ = rpc1.poll().fuse() => {}
@@ -152,7 +152,7 @@ async fn test_client_disconnected_error() {
 
     assert!(matches!(
         call.await,
-        Err(karo_common_rpc::Error::PeerDisconnected)
+        Err(krossbar_common_rpc::Error::PeerDisconnected)
     ))
 }
 
@@ -182,7 +182,7 @@ async fn test_user_error() {
 
     assert!(
         request
-            .respond::<u32>(Err(karo_common_rpc::Error::EndpointError(
+            .respond::<u32>(Err(krossbar_common_rpc::Error::EndpointError(
                 "Test error".to_owned()
             )))
             .await
@@ -190,7 +190,7 @@ async fn test_user_error() {
 
     select! {
         response = call.fuse() => {
-            assert!(matches!(response, Err(karo_common_rpc::Error::EndpointError(_))));
+            assert!(matches!(response, Err(krossbar_common_rpc::Error::EndpointError(_))));
         },
         _ = rpc1.poll().fuse() => {}
     }

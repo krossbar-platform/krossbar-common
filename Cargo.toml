@@ -1,3 +1,3 @@
 [workspace]
 resolver = "2"
-members = ["karo-common-rpc"]
+members = ["krossbar-common-rpc"]

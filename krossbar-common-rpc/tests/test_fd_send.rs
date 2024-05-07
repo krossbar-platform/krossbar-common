@@ -1,5 +1,5 @@
 use futures::{select, FutureExt};
-use karo_common_rpc::{request::Body, rpc::Rpc};
+use krossbar_common_rpc::{request::Body, rpc::Rpc};
 use tokio::net::UnixStream;
 
 const CLIENT_NAME: &str = "com.test.client";

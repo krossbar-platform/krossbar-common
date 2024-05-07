@@ -2,7 +2,7 @@ use futures::{lock::Mutex, select, FutureExt, StreamExt};
 use once_cell::sync::Lazy;
 use tokio::net::UnixStream;
 
-use karo_common_rpc::{monitor::Monitor, rpc::Rpc, Direction, RpcData};
+use krossbar_common_rpc::{monitor::Monitor, rpc::Rpc, Direction, RpcData};
 
 const CLIENT_NAME: &str = "com.test.client";
 const ENDPOINT_NAME: &str = "test_function";
