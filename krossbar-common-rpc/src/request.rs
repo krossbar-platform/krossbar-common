@@ -36,6 +36,10 @@ impl RpcRequest {
         }
     }
 
+    pub fn message_id(&self) -> i64 {
+        self.message_id
+    }
+
     pub fn writer(&self) -> &RpcWriter {
         &self.writer
     }
