@@ -136,6 +136,10 @@ impl CallsRegistry {
             } else {
                 debug!("Succesfully resolved {message_id} subscription")
             }
+        // If we've received an error for FD call, we may not know it's actually FD response
+        // Let's check it manually
+        } else if self.fd_calls.contains_key(&message_id) {
+            self.resolve_with_fd(message_id, response, None)
         } else {
             warn!("Unexpected peer response: {:?}", response)
         }
