@@ -199,7 +199,7 @@ impl RpcWriter {
             bail!(e);
         }
 
-        if let Err(e) = self.socket.lock().await.as_ref().send_stream(socket).await {
+        if let Err(e) = self.socket.lock().await.send_stream(socket).await {
             debug!(
                 "Failed to send connection request socket: {}",
                 e.to_string()
@@ -254,7 +254,7 @@ impl RpcWriter {
             debug!("Failed to write client response: {}", e.to_string());
             return false;
         } else {
-            if let Err(e) = self.socket.lock().await.as_ref().send_stream(stream).await {
+            if let Err(e) = self.socket.lock().await.send_stream(stream).await {
                 debug!("Failed to send fd to a client: {}", e.to_string());
                 return false;
             }

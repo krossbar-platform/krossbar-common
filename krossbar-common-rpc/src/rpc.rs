@@ -95,7 +95,7 @@ impl Rpc {
                     ));
                 }
                 message::RpcData::ConnectionRequest(service_name) => {
-                    match self.socket.as_ref().recv_stream().await {
+                    match self.socket.recv_stream().await {
                         Ok(stream) => {
                             return Some(RpcRequest::new(
                                 message.id,
@@ -115,7 +115,7 @@ impl Rpc {
                         .await
                 }
                 message::RpcData::FdResponse(body) => match body {
-                    Ok(body) => match self.socket.as_ref().recv_stream().await {
+                    Ok(body) => match self.socket.recv_stream().await {
                         Ok(stream) => self.calls_registry.lock().await.resolve_with_fd(
                             message.id,
                             Ok(body),
