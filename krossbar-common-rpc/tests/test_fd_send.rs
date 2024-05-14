@@ -42,7 +42,7 @@ async fn test_fd_send() {
 
     let (send_stream1, send_stream2) = UnixStream::pair().unwrap();
 
-    rpc1.connection_request(CLIENT_NAME, send_stream2)
+    rpc1.connection_request("rpc1", CLIENT_NAME, send_stream2)
         .await
         .unwrap();
 
@@ -50,8 +50,13 @@ async fn test_fd_send() {
     let mut request = rpc2.poll().await.unwrap();
     assert_eq!(request.endpoint(), "connect");
 
-    let received_rpc = if let Some(Body::Fd(client_name, stream)) = request.take_body() {
-        assert_eq!(client_name, CLIENT_NAME);
+    let received_rpc = if let Some(Body::Fd {
+        target_name,
+        stream,
+        ..
+    }) = request.take_body()
+    {
+        assert_eq!(target_name, CLIENT_NAME);
         Rpc::new(stream)
     } else {
         panic!("Invalid message type")

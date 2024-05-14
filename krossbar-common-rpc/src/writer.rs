@@ -76,7 +76,10 @@ impl RpcWriter {
 
         let message = RpcMessage {
             id,
-            data: message::RpcData::Call(endpoint.to_owned(), data),
+            data: message::RpcData::Call {
+                endpoint: endpoint.to_owned(),
+                params: data,
+            },
         };
 
         // In case we failed to send immediately send error response
@@ -115,7 +118,10 @@ impl RpcWriter {
 
         let message = RpcMessage {
             id,
-            data: message::RpcData::Call(endpoint.to_owned(), data),
+            data: message::RpcData::Call {
+                endpoint: endpoint.to_owned(),
+                params: data,
+            },
         };
 
         // In case we failed to send immediately send error response
@@ -149,7 +155,9 @@ impl RpcWriter {
 
         debug!("New subscription with id {id} to the {endpoint}");
 
-        let data = message::RpcData::Subscription(endpoint.to_owned());
+        let data = message::RpcData::Subscription {
+            endpoint: endpoint.to_owned(),
+        };
         let message = RpcMessage {
             id,
             data: data.clone(),
@@ -180,15 +188,19 @@ impl RpcWriter {
     /// Make a connection request. Blocks until a connection response is received
     pub async fn connection_request(
         &self,
-        service_name: &str,
+        client_name: &str,
+        target_name: &str,
         socket: UnixStream,
     ) -> anyhow::Result<()> {
         let message = RpcMessage {
             id: 0,
-            data: message::RpcData::ConnectionRequest(service_name.to_owned()),
+            data: message::RpcData::ConnectionRequest {
+                client_name: client_name.into(),
+                target_name: target_name.into(),
+            },
         };
 
-        debug!("New connection request to {service_name:?}");
+        debug!("New connection request from {client_name} to {target_name}");
 
         if let Err(e) = self.socket_write(&message).await {
             debug!(

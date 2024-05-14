@@ -9,9 +9,17 @@ pub struct RpcMessage {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum RpcData {
-    Call(String, Bson),
-    Subscription(String),
-    ConnectionRequest(String),
+    Call {
+        endpoint: String,
+        params: Bson,
+    },
+    Subscription {
+        endpoint: String,
+    },
+    ConnectionRequest {
+        client_name: String,
+        target_name: String,
+    },
     Response(crate::Result<Bson>),
     FdResponse(crate::Result<Bson>),
 }

@@ -11,7 +11,11 @@ pub enum Body {
     /// Method subscription
     Subscription,
     /// Incoming connection request in a form of UnixStream
-    Fd(String, UnixStream),
+    Fd {
+        client_name: String,
+        target_name: String,
+        stream: UnixStream,
+    },
 }
 
 /// Client request

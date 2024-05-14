@@ -29,7 +29,7 @@ async fn test_monitor_fd_send() {
 
     let (_send_stream1, send_stream2) = UnixStream::pair().unwrap();
 
-    rpc1.connection_request(CLIENT_NAME, send_stream2)
+    rpc1.connection_request("rpc1", CLIENT_NAME, send_stream2)
         .await
         .unwrap();
 
@@ -43,14 +43,14 @@ async fn test_monitor_fd_send() {
     assert!(matches!(sent_message.direction, Direction::Ougoing));
     assert!(matches!(
         sent_message.message.data,
-        RpcData::ConnectionRequest(_)
+        RpcData::ConnectionRequest { .. }
     ));
 
     let received_message = monitor_receiver.next().await.unwrap();
     assert!(matches!(received_message.direction, Direction::Incoming));
     assert!(matches!(
         received_message.message.data,
-        RpcData::ConnectionRequest(_)
+        RpcData::ConnectionRequest { .. }
     ));
 }
 
@@ -97,12 +97,15 @@ async fn test_monitor_fd_response() {
     // FD request
     let sent_message = monitor_receiver.next().await.unwrap();
     assert!(matches!(sent_message.direction, Direction::Ougoing));
-    assert!(matches!(sent_message.message.data, RpcData::Call(_, _)));
+    assert!(matches!(sent_message.message.data, RpcData::Call { .. }));
 
     // FD request reseived
     let received_message = monitor_receiver.next().await.unwrap();
     assert!(matches!(received_message.direction, Direction::Incoming));
-    assert!(matches!(received_message.message.data, RpcData::Call(_, _)));
+    assert!(matches!(
+        received_message.message.data,
+        RpcData::Call { .. }
+    ));
 
     // FD response
     let sent_fd_message = monitor_receiver.next().await.unwrap();
@@ -165,7 +168,7 @@ async fn test_monitor_subscription() {
     ));
     assert!(matches!(
         sent_subscription_request.message.data,
-        RpcData::Subscription(_)
+        RpcData::Subscription { .. }
     ));
 
     let received_subscription_request = monitor_receiver.next().await.unwrap();
@@ -175,7 +178,7 @@ async fn test_monitor_subscription() {
     ));
     assert!(matches!(
         received_subscription_request.message.data,
-        RpcData::Subscription(_)
+        RpcData::Subscription { .. }
     ));
 
     // Outgoing subscription messages

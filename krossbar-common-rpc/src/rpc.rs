@@ -78,7 +78,7 @@ impl Rpc {
             }
 
             match message.data {
-                message::RpcData::Call(endpoint, params) => {
+                message::RpcData::Call { endpoint, params } => {
                     return Some(RpcRequest::new(
                         message.id,
                         self.writer.clone(),
@@ -86,7 +86,7 @@ impl Rpc {
                         Body::Call(params),
                     ));
                 }
-                message::RpcData::Subscription(endpoint) => {
+                message::RpcData::Subscription { endpoint } => {
                     return Some(RpcRequest::new(
                         message.id,
                         self.writer.clone(),
@@ -94,19 +94,24 @@ impl Rpc {
                         Body::Subscription,
                     ));
                 }
-                message::RpcData::ConnectionRequest(service_name) => {
-                    match self.socket.recv_stream().await {
-                        Ok(stream) => {
-                            return Some(RpcRequest::new(
-                                message.id,
-                                self.writer.clone(),
-                                "connect".to_owned(),
-                                Body::Fd(service_name, stream),
-                            ))
-                        }
-                        Err(_) => warn!("Failed to recieve incoming connection fd"),
+                message::RpcData::ConnectionRequest {
+                    client_name,
+                    target_name,
+                } => match self.socket.recv_stream().await {
+                    Ok(stream) => {
+                        return Some(RpcRequest::new(
+                            message.id,
+                            self.writer.clone(),
+                            "connect".to_owned(),
+                            Body::Fd {
+                                client_name,
+                                target_name,
+                                stream,
+                            },
+                        ))
                     }
-                }
+                    Err(_) => warn!("Failed to recieve incoming connection fd"),
+                },
                 message::RpcData::Response(body) => {
                     self.calls_registry
                         .lock()
