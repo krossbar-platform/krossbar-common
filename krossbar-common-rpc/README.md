@@ -97,7 +97,7 @@ async fn poll() {
                 request.respond(Ok(42)).await;
                 request.respond(Ok(43)).await;
             },
-            Body::Fd(client_name, _) => {
+            Body::Fd { client_name, .. } => {
                 println!("Incoming connection request from {client_name}");
                 request.respond(Ok(())).await;
             }
