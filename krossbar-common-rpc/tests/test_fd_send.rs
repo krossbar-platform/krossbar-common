@@ -86,7 +86,7 @@ async fn test_no_fd_response() {
 
     assert!(
         request
-            .respond::<u32>(Err(krossbar_common_rpc::Error::EndpointError(
+            .respond::<u32>(Err(krossbar_common_rpc::Error::ClientError(
                 "Test error".to_owned()
             )))
             .await
@@ -94,7 +94,7 @@ async fn test_no_fd_response() {
 
     select! {
         response = call.fuse() => {
-            assert!(matches!(response, Err(krossbar_common_rpc::Error::EndpointError(_))));
+            assert!(matches!(response, Err(krossbar_common_rpc::Error::ClientError(_))));
         },
         _ = rpc1.poll().fuse() => {}
     }

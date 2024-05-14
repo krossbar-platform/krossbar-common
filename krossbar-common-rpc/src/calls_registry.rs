@@ -98,7 +98,12 @@ impl CallsRegistry {
                         }
                     } else {
                         warn!("Ok response for a stream request w/o the stream itself");
-                        if channel.send(Err(crate::Error::ProtocolError)).is_err() {
+                        if channel
+                            .send(Err(crate::Error::InternalError(
+                                "Hub returned Ok response without a stream handle".into(),
+                            )))
+                            .is_err()
+                        {
                             warn!("User wasn't waiting for an fd call response")
                         }
                     }
