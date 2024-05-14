@@ -224,12 +224,12 @@ impl RpcWriter {
             data: message::RpcData::Response(data),
         };
 
-        if let Err(_) = self.socket_write(&message).await {
+        if self.socket_write(&message).await.is_err() {
             debug!("Failed to write client response");
             return false;
         }
 
-        return true;
+        true
     }
 
     /// Respond to a call with FD
@@ -253,24 +253,24 @@ impl RpcWriter {
         if let Err(e) = self.socket_write(&message).await {
             debug!("Failed to write client response: {}", e.to_string());
             return false;
-        } else {
-            if let Err(e) = self.socket.lock().await.send_stream(stream).await {
-                debug!("Failed to send fd to a client: {}", e.to_string());
-                return false;
-            }
+        } else if let Err(e) = self.socket.lock().await.send_stream(stream).await {
+            debug!("Failed to send fd to a client: {}", e.to_string());
+            return false;
         }
 
-        return true;
+        true
     }
 
     /// Write message into a socket and monitor
     async fn socket_write(&self, message: &RpcMessage) -> anyhow::Result<()> {
         let result = self.socket.lock().await.write_message(&message).await;
 
-        #[cfg(feature = "monitor")]
-        {
-            use crate::monitor::{Direction, Monitor};
-            Monitor::send(message, Direction::Ougoing).await;
+        if result.is_ok() {
+            #[cfg(feature = "monitor")]
+            {
+                use crate::monitor::{Direction, Monitor};
+                Monitor::send(message, Direction::Ougoing).await;
+            }
         }
 
         result

@@ -91,20 +91,20 @@ impl CallsRegistry {
             match response {
                 Ok(doc) => {
                     if let Some(stream) = maybe_fd {
-                        if let Err(_) = channel.send(Ok((doc, stream))) {
+                        if channel.send(Ok((doc, stream))).is_err() {
                             warn!("User wasn't waiting for an fd call response")
                         } else {
                             debug!("Succesfully resolved FD response for a message {message_id}")
                         }
                     } else {
                         warn!("Ok response for a stream request w/o the stream itself");
-                        if let Err(_) = channel.send(Err(crate::Error::ProtocolError)) {
+                        if channel.send(Err(crate::Error::ProtocolError)).is_err() {
                             warn!("User wasn't waiting for an fd call response")
                         }
                     }
                 }
                 Err(e) => {
-                    if let Err(_) = channel.send(Err(e)) {
+                    if channel.send(Err(e)).is_err() {
                         warn!("User wasn't waiting for an fd call response")
                     }
                 }
@@ -117,7 +117,7 @@ impl CallsRegistry {
     pub async fn resolve(&mut self, message_id: i64, response: crate::Result<Bson>) {
         // Try to resolve an active call
         if let Some(channel) = self.calls.remove(&message_id) {
-            if let Err(_) = channel.send(response) {
+            if channel.send(response).is_err() {
                 warn!("User dropped call handle. Failed to send a response")
             } else {
                 debug!("Succesfully resolved {message_id} call")
@@ -127,7 +127,7 @@ impl CallsRegistry {
             if !self.active_subscriptions.contains_key(&message_id) {
                 debug!("Inactive subscription response")
             // Try to resolve an active subscription
-            } else if let Err(_) = channel.send(response).await {
+            } else if channel.send(response).await.is_err() {
                 warn!("User dropped subscriptions handle. Failed to send a response");
 
                 // Remove subscription as no one is waiting for it anymore
