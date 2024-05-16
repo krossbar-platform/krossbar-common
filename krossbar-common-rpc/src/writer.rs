@@ -77,7 +77,7 @@ impl RpcWriter {
             },
         };
 
-        if let Err(e) = self.socket_write(&message).await {
+        if let Err(e) = Box::pin(self.socket_write_and_monitor(&message, true)).await {
             debug!("Error sending a message: {e:?}");
 
             Err(crate::Error::PeerDisconnected)
@@ -296,11 +296,19 @@ impl RpcWriter {
         true
     }
 
-    /// Write message into a socket and monitor
     async fn socket_write(&self, message: &RpcMessage) -> anyhow::Result<()> {
+        self.socket_write_and_monitor(message, false).await
+    }
+
+    /// Write message into a socket and monitor
+    async fn socket_write_and_monitor(
+        &self,
+        message: &RpcMessage,
+        ignore_monitor: bool,
+    ) -> anyhow::Result<()> {
         let result = self.socket.lock().await.write_message(&message).await;
 
-        if result.is_ok() {
+        if !ignore_monitor && result.is_ok() {
             #[cfg(feature = "monitor")]
             {
                 use crate::monitor::{Direction, Monitor};

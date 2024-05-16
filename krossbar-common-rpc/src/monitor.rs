@@ -1,15 +1,15 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use futures::{lock::Mutex, Stream};
+use futures::lock::Mutex;
 use log::{debug, error};
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use tokio::net::UnixStream;
 
-use crate::{message::RpcMessage, message_stream::AsyncWriteMessage};
+use crate::{message::RpcMessage, rpc::Rpc};
 
 static MONITOR_ACTIVE: AtomicBool = AtomicBool::new(false);
-static MONITOR_HANDLE: Lazy<Mutex<Option<UnixStream>>> = Lazy::new(|| Mutex::new(None));
+static MONITOR_HANDLE: Lazy<Mutex<Option<Rpc>>> = Lazy::new(|| Mutex::new(None));
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum Direction {
@@ -29,24 +29,8 @@ impl Monitor {
     pub async fn set(stream: UnixStream) {
         debug!("Monitor connected");
 
-        *MONITOR_HANDLE.lock().await = Some(stream);
+        *MONITOR_HANDLE.lock().await = Some(Rpc::new(stream));
         MONITOR_ACTIVE.store(true, Ordering::Relaxed);
-    }
-
-    #[cfg(feature = "impl-monitor")]
-    pub fn make_receiver(mut stream: UnixStream) -> impl Stream<Item = MonitorMessage> {
-        use std::pin::pin;
-
-        use futures::{stream, Future};
-
-        use crate::message_stream::AsyncReadMessage;
-
-        stream::poll_fn(move |ctx| {
-            pin!(stream.read_message()).poll(ctx).map(|val| match val {
-                Ok(message) => Some(message),
-                Err(_) => None,
-            })
-        })
     }
 
     pub(crate) async fn send(message: &RpcMessage, direction: Direction) {
@@ -59,9 +43,8 @@ impl Monitor {
             message: message.clone(),
         };
 
-        let mut lock = MONITOR_HANDLE.lock().await;
-        if let Some(stream) = lock.as_mut() {
-            if let Err(_) = stream.write_message(&monitor_message).await {
+        if let Some(rpc) = MONITOR_HANDLE.lock().await.as_ref() {
+            if let Err(_) = rpc.send_message("message", &monitor_message).await {
                 MONITOR_ACTIVE.store(false, Ordering::Relaxed);
 
                 debug!("Monitor disconnected");
