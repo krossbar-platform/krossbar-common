@@ -64,6 +64,23 @@ async fn subscribe() {
 }
 ```
 
+One-way message:
+```rust
+use futures::{select, FutureExt};
+use tokio::net::UnixStream;
+
+use krossbar_common_rpc::rpc::Rpc;
+
+async fn message() {
+    let stream = UnixStream::connect("/tmp/hub.sock").await.unwrap();
+    let mut rpc = Rpc::new(stream);
+
+    let call = rpc.send_message("echo", &42).await.unwrap();
+
+    let incoming_message = rpc.poll().await;
+}
+```
+
 Polling imcoming messages:
 ```rust
 use futures::{select, FutureExt};
@@ -87,6 +104,9 @@ async fn poll() {
 
         println!("Incoming method call: {}", request.endpoint());
         match request.take_body().unwrap() {
+            Body::Message(bson) => {
+                println!("Incoming message: {bson:?}");
+            },
             Body::Call(bson) => {
                 println!("Incoming call: {bson:?}");
                 request.respond(Ok(bson)).await;

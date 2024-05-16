@@ -6,6 +6,8 @@ use super::writer::RpcWriter;
 
 /// Incoming message body
 pub enum Body {
+    /// One way message
+    Message(Bson),
     /// Method call
     Call(Bson),
     /// Method subscription

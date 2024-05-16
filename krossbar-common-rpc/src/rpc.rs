@@ -78,6 +78,14 @@ impl Rpc {
             }
 
             match message.data {
+                message::RpcData::Message { endpoint, body } => {
+                    return Some(RpcRequest::new(
+                        -1,
+                        self.writer.clone(),
+                        endpoint,
+                        Body::Message(body),
+                    ));
+                }
                 message::RpcData::Call { endpoint, params } => {
                     return Some(RpcRequest::new(
                         message.id,

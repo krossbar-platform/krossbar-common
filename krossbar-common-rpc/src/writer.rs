@@ -63,6 +63,29 @@ impl RpcWriter {
         }
     }
 
+    /// Send one-way mesage
+    pub async fn send_message<P: Serialize>(&self, endpoint: &str, data: &P) -> crate::Result<()> {
+        let data = bson::to_bson(data).map_err(|e| crate::Error::ParamsTypeError(e.to_string()))?;
+
+        debug!("New message to an `{endpoint}` endpoint: {data:?}");
+
+        let message = RpcMessage {
+            id: -1,
+            data: message::RpcData::Message {
+                endpoint: endpoint.to_owned(),
+                body: data,
+            },
+        };
+
+        if let Err(e) = self.socket_write(&message).await {
+            debug!("Error sending a message: {e:?}");
+
+            Err(crate::Error::PeerDisconnected)
+        } else {
+            Ok(())
+        }
+    }
+
     /// Make a client call
     pub async fn call<P: Serialize, R: DeserializeOwned>(
         &self,
@@ -72,7 +95,7 @@ impl RpcWriter {
         let data = bson::to_bson(data).map_err(|e| crate::Error::ParamsTypeError(e.to_string()))?;
         let (id, result) = self.registry.lock().await.add_call();
 
-        debug!("New {id} call to the {endpoint}: {data:?}");
+        debug!("New {id} call to an {endpoint}: {data:?}");
 
         let message = RpcMessage {
             id,
