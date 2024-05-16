@@ -56,6 +56,11 @@ impl RpcRequest {
         self.body.take()
     }
 
+    /// Peek request body
+    pub fn body(&self) -> &Option<Body> {
+        &self.body
+    }
+
     /// Requested endpoint
     pub fn endpoint(&self) -> &String {
         &self.endpoint

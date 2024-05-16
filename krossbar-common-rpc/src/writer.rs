@@ -64,6 +64,7 @@ impl RpcWriter {
     }
 
     /// Send one-way mesage
+    /// Immediately returns an `Error` if `P` doesn't serialize into Bson, or the client has disconnected
     pub async fn send_message<P: Serialize>(&self, endpoint: &str, data: &P) -> crate::Result<()> {
         let data = bson::to_bson(data).map_err(|e| crate::Error::ParamsTypeError(e.to_string()))?;
 
@@ -87,6 +88,7 @@ impl RpcWriter {
     }
 
     /// Make a client call
+    /// Immediately returns an `Error` if `P` doesn't serialize into Bson, or the client has disconnected
     pub async fn call<P: Serialize, R: DeserializeOwned>(
         &self,
         endpoint: &str,
@@ -129,6 +131,7 @@ impl RpcWriter {
     }
 
     /// Make a call with FD. Used by the hub to send peer FD's
+    /// Immediately returns an `Error` if `P` doesn't serialize into Bson, or the client has disconnected
     pub async fn call_fd<P: Serialize, R: DeserializeOwned>(
         &self,
         endpoint: &str,
@@ -171,6 +174,7 @@ impl RpcWriter {
     }
 
     /// Subscribe to the `endpoint`
+    /// Immediately returns an `Error` if the client has disconnected
     pub async fn subscribe<R: DeserializeOwned>(&self, endpoint: &str) -> SubResultType<R> {
         let mut registry_lock = self.registry.lock().await;
 
@@ -209,6 +213,7 @@ impl RpcWriter {
     }
 
     /// Make a connection request. Blocks until a connection response is received
+    /// Immediately returns an `Error` if the client has disconnected
     pub async fn connection_request(
         &self,
         client_name: &str,
@@ -247,6 +252,7 @@ impl RpcWriter {
     }
 
     /// Respond to a call
+    /// Returns `true` if succesfully responded
     pub async fn respond<P: Serialize>(&self, message_id: i64, data: crate::Result<P>) -> bool {
         let data = data.and_then(|value| {
             bson::to_bson(&value).map_err(|e| crate::Error::ResultTypeError(e.to_string()))
@@ -268,6 +274,7 @@ impl RpcWriter {
     }
 
     /// Respond to a call with FD
+    /// Returns `true` if succesfully responded
     pub async fn respond_with_fd<P: Serialize>(
         &self,
         message_id: i64,
