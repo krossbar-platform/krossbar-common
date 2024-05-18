@@ -15,6 +15,8 @@ use crate::{
 
 /// RPC handle to a client
 pub struct Rpc {
+    /// Verbose peer name
+    peer_name: String,
     /// Socket reader to read incoming message
     socket: OwnedReadHalf,
     /// Socker writer handle to send responses
@@ -25,17 +27,22 @@ pub struct Rpc {
 
 impl Rpc {
     /// Make new RPC wrapper from [tokio::net::UnixStream]
-    pub fn new(stream: UnixStream) -> Self {
+    pub fn new(stream: UnixStream, peer_name: &str) -> Self {
         trace!("Making new RPC handle from a stream");
 
         let calls_registry = Arc::new(Mutex::new(CallsRegistry::new()));
         let (reader, writer) = stream.into_split();
 
         Self {
+            peer_name: peer_name.to_owned(),
             socket: reader,
-            writer: RpcWriter::new(writer, calls_registry.clone()),
+            writer: RpcWriter::new(writer, calls_registry.clone(), peer_name),
             calls_registry,
         }
+    }
+
+    pub fn name(&self) -> &str {
+        &self.peer_name
     }
 
     /// Replace rpc stream with a new handle if reconnected.
@@ -74,7 +81,7 @@ impl Rpc {
             #[cfg(feature = "monitor")]
             {
                 use crate::monitor::{Direction, Monitor};
-                Monitor::send(&message, Direction::Incoming).await;
+                Monitor::send(&message, Direction::Incoming, &self.peer_name).await;
             }
 
             match message.data {

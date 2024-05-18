@@ -12,8 +12,8 @@ async fn test_simple_call() {
 
     let (stream1, stream2) = UnixStream::pair().unwrap();
 
-    let mut rpc1 = Rpc::new(stream1);
-    let mut rpc2 = Rpc::new(stream2);
+    let mut rpc1 = Rpc::new(stream1, "rpc");
+    let mut rpc2 = Rpc::new(stream2, "rpc");
 
     let call = rpc1.call::<u32, u32>(ENDPOINT_NAME, &42).await.unwrap();
 
@@ -42,9 +42,9 @@ async fn test_simple_call() {
 async fn test_call_reconnect() {
     let (stream1, stream2) = UnixStream::pair().unwrap();
 
-    let mut rpc1 = Rpc::new(stream1);
+    let mut rpc1 = Rpc::new(stream1, "rpc");
     {
-        let mut rpc2 = Rpc::new(stream2);
+        let mut rpc2 = Rpc::new(stream2, "rpc");
 
         let call = rpc1.call::<u32, u32>(ENDPOINT_NAME, &42).await.unwrap();
 
@@ -71,8 +71,8 @@ async fn test_call_reconnect() {
     let (stream1, stream3) = UnixStream::pair().unwrap();
 
     {
-        rpc1.on_reconnected(Rpc::new(stream1)).await;
-        let mut rpc3 = Rpc::new(stream3);
+        rpc1.on_reconnected(Rpc::new(stream1, "rpc")).await;
+        let mut rpc3 = Rpc::new(stream3, "rpc");
 
         let call = rpc1.call::<u32, u32>(ENDPOINT_NAME, &42).await.unwrap();
 
@@ -102,8 +102,8 @@ async fn test_call_reconnect() {
 async fn test_bson_param_error() {
     let (stream1, stream2) = UnixStream::pair().unwrap();
 
-    let rpc1 = Rpc::new(stream1);
-    let _ = Rpc::new(stream2);
+    let rpc1 = Rpc::new(stream1, "rpc");
+    let _ = Rpc::new(stream2, "rpc");
 
     // Try to send u64::MAX, which BSON doesn't support. It has only i64
     let call = rpc1.call::<u64, u32>(ENDPOINT_NAME, &u64::MAX).await;
@@ -118,8 +118,8 @@ async fn test_bson_param_error() {
 async fn test_result_type_error() {
     let (stream1, stream2) = UnixStream::pair().unwrap();
 
-    let mut rpc1 = Rpc::new(stream1);
-    let mut rpc2 = Rpc::new(stream2);
+    let mut rpc1 = Rpc::new(stream1, "rpc");
+    let mut rpc2 = Rpc::new(stream2, "rpc");
 
     let call = rpc1.call::<u32, String>(ENDPOINT_NAME, &42).await.unwrap();
 
@@ -145,7 +145,7 @@ async fn test_client_disconnected_error() {
 
     stream1.shutdown().await.unwrap();
     stream2.shutdown().await.unwrap();
-    let rpc1 = Rpc::new(stream1);
+    let rpc1 = Rpc::new(stream1, "rpc");
 
     // Try to send u64::MAX, which BSON doesn't support. It has only i64
     let call = rpc1.call::<u64, u32>(ENDPOINT_NAME, &42).await.unwrap();
@@ -164,8 +164,8 @@ async fn test_user_error() {
 
     let (stream1, stream2) = UnixStream::pair().unwrap();
 
-    let mut rpc1 = Rpc::new(stream1);
-    let mut rpc2 = Rpc::new(stream2);
+    let mut rpc1 = Rpc::new(stream1, "rpc");
+    let mut rpc2 = Rpc::new(stream2, "rpc");
 
     let call = rpc1.call::<u32, u32>(ENDPOINT_NAME, &42).await.unwrap();
 

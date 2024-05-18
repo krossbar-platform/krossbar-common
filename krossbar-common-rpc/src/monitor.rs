@@ -19,9 +19,14 @@ pub enum Direction {
     Outgoing,
 }
 
+/// Monitor message
 #[derive(Serialize, Deserialize, Debug)]
 pub struct MonitorMessage {
+    /// Peer name
+    pub peer_name: String,
+    /// Message direction
     pub direction: Direction,
+    /// Message body
     pub message: RpcMessage,
 }
 
@@ -31,16 +36,17 @@ impl Monitor {
     pub async fn set(stream: UnixStream) {
         debug!("Monitor connected");
 
-        *MONITOR_HANDLE.lock().await = Some(Rpc::new(stream));
+        *MONITOR_HANDLE.lock().await = Some(Rpc::new(stream, "monitor"));
         MONITOR_ACTIVE.store(true, Ordering::Relaxed);
     }
 
-    pub(crate) async fn send(message: &RpcMessage, direction: Direction) {
+    pub(crate) async fn send(message: &RpcMessage, direction: Direction, peer_name: &str) {
         if !MONITOR_ACTIVE.load(Ordering::Relaxed) {
             return;
         }
 
         let monitor_message = MonitorMessage {
+            peer_name: peer_name.to_owned(),
             direction,
             message: message.clone(),
         };

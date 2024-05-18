@@ -12,8 +12,8 @@ async fn test_simple_subscription() {
 
     let (stream1, stream2) = UnixStream::pair().unwrap();
 
-    let mut rpc1 = Rpc::new(stream1);
-    let mut rpc2 = Rpc::new(stream2);
+    let mut rpc1 = Rpc::new(stream1, "rpc");
+    let mut rpc2 = Rpc::new(stream2, "rpc");
 
     let call = rpc1.subscribe::<u32>(ENDPOINT_NAME).await.unwrap();
 
@@ -43,9 +43,9 @@ async fn test_subscription_reconnect() {
 
     let (stream1, stream2) = UnixStream::pair().unwrap();
 
-    let mut rpc1 = Rpc::new(stream1);
+    let mut rpc1 = Rpc::new(stream1, "rpc");
     let subscription1 = {
-        let mut rpc2 = Rpc::new(stream2);
+        let mut rpc2 = Rpc::new(stream2, "rpc");
 
         let mut subscription = rpc1.subscribe::<u32>(ENDPOINT_NAME).await.unwrap();
 
@@ -78,8 +78,8 @@ async fn test_subscription_reconnect() {
     let (stream1, stream3) = UnixStream::pair().unwrap();
 
     {
-        rpc1.on_reconnected(Rpc::new(stream1)).await;
-        let mut rpc3 = Rpc::new(stream3);
+        rpc1.on_reconnected(Rpc::new(stream1, "rpc")).await;
+        let mut rpc3 = Rpc::new(stream3, "rpc");
 
         // Get reconnection subscription request
         let mut request = rpc3.poll().await.unwrap();
@@ -108,9 +108,9 @@ async fn test_subscription_reconnect_new_request() {
 
     let (stream1, stream2) = UnixStream::pair().unwrap();
 
-    let mut rpc1 = Rpc::new(stream1);
+    let mut rpc1 = Rpc::new(stream1, "rpc");
     {
-        let mut rpc2 = Rpc::new(stream2);
+        let mut rpc2 = Rpc::new(stream2, "rpc");
 
         let mut subscription = rpc1.subscribe::<u32>(ENDPOINT_NAME).await.unwrap();
 
@@ -141,8 +141,8 @@ async fn test_subscription_reconnect_new_request() {
     let (stream1, stream3) = UnixStream::pair().unwrap();
 
     {
-        rpc1.on_reconnected(Rpc::new(stream1)).await;
-        let mut rpc3 = Rpc::new(stream3);
+        rpc1.on_reconnected(Rpc::new(stream1, "rpc")).await;
+        let mut rpc3 = Rpc::new(stream3, "rpc");
 
         let subscription2 = rpc1.subscribe::<u32>(ENDPOINT_NAME).await.unwrap();
 

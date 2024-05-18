@@ -37,8 +37,8 @@ async fn test_monitor_fd_send() {
 
     let (stream1, stream2) = UnixStream::pair().unwrap();
 
-    let rpc1 = Rpc::new(stream1);
-    let mut rpc2 = Rpc::new(stream2);
+    let rpc1 = Rpc::new(stream1, "rpc");
+    let mut rpc2 = Rpc::new(stream2, "rpc");
 
     let (_send_stream1, send_stream2) = UnixStream::pair().unwrap();
 
@@ -50,7 +50,7 @@ async fn test_monitor_fd_send() {
     let request = rpc2.poll().await.unwrap();
     assert_eq!(request.endpoint(), "connect");
 
-    let mut monitor_receiver = Rpc::new(monitor_receive);
+    let mut monitor_receiver = Rpc::new(monitor_receive, "rpc");
 
     let sent_message = next_monitor_message(&mut monitor_receiver).await;
     assert!(matches!(sent_message.direction, Direction::Outgoing));
@@ -81,8 +81,8 @@ async fn test_monitor_fd_response() {
 
     let (stream1, stream2) = UnixStream::pair().unwrap();
 
-    let mut rpc1 = Rpc::new(stream1);
-    let mut rpc2 = Rpc::new(stream2);
+    let mut rpc1 = Rpc::new(stream1, "rpc");
+    let mut rpc2 = Rpc::new(stream2, "rpc");
 
     let call = rpc1.call_fd::<u32, u32>(ENDPOINT_NAME, &42).await.unwrap();
 
@@ -105,7 +105,7 @@ async fn test_monitor_fd_response() {
         }
     };
 
-    let mut monitor_receiver = Rpc::new(monitor_receive);
+    let mut monitor_receiver = Rpc::new(monitor_receive, "rpc");
 
     // FD request
     let sent_message = next_monitor_message(&mut monitor_receiver).await;
@@ -151,8 +151,8 @@ async fn test_monitor_subscription() {
 
     let (stream1, stream2) = UnixStream::pair().unwrap();
 
-    let mut rpc1 = Rpc::new(stream1);
-    let mut rpc2 = Rpc::new(stream2);
+    let mut rpc1 = Rpc::new(stream1, "rpc");
+    let mut rpc2 = Rpc::new(stream2, "rpc");
 
     let mut subscription = rpc1.subscribe::<u32>(ENDPOINT_NAME).await.unwrap();
 
@@ -172,7 +172,7 @@ async fn test_monitor_subscription() {
         _ = rpc1.poll().fuse() => {}
     };
 
-    let mut monitor_receiver = Rpc::new(monitor_receive);
+    let mut monitor_receiver = Rpc::new(monitor_receive, "rpc");
 
     let sent_subscription_request = next_monitor_message(&mut monitor_receiver).await;
     assert!(matches!(

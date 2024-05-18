@@ -37,8 +37,8 @@ async fn test_fd_send() {
 
     let (stream1, stream2) = UnixStream::pair().unwrap();
 
-    let rpc1 = Rpc::new(stream1);
-    let mut rpc2 = Rpc::new(stream2);
+    let rpc1 = Rpc::new(stream1, "rpc");
+    let mut rpc2 = Rpc::new(stream2, "rpc");
 
     let (send_stream1, send_stream2) = UnixStream::pair().unwrap();
 
@@ -57,12 +57,12 @@ async fn test_fd_send() {
     }) = request.take_body()
     {
         assert_eq!(target_name, CLIENT_NAME);
-        Rpc::new(stream)
+        Rpc::new(stream, "rpc")
     } else {
         panic!("Invalid message type")
     };
 
-    test_pair_call(received_rpc, Rpc::new(send_stream1)).await
+    test_pair_call(received_rpc, Rpc::new(send_stream1, "rpc")).await
 }
 
 #[tokio::test]
@@ -73,8 +73,8 @@ async fn test_no_fd_response() {
 
     let (stream1, stream2) = UnixStream::pair().unwrap();
 
-    let mut rpc1 = Rpc::new(stream1);
-    let mut rpc2 = Rpc::new(stream2);
+    let mut rpc1 = Rpc::new(stream1, "rpc");
+    let mut rpc2 = Rpc::new(stream2, "rpc");
 
     let call = rpc1.call_fd::<u32, u32>(ENDPOINT_NAME, &42).await.unwrap();
 
@@ -113,8 +113,8 @@ async fn test_fd_response() {
 
     let (stream1, stream2) = UnixStream::pair().unwrap();
 
-    let mut rpc1 = Rpc::new(stream1);
-    let mut rpc2 = Rpc::new(stream2);
+    let mut rpc1 = Rpc::new(stream1, "rpc");
+    let mut rpc2 = Rpc::new(stream2, "rpc");
 
     let call = rpc1.call_fd::<u32, u32>(ENDPOINT_NAME, &42).await.unwrap();
 
@@ -143,5 +143,5 @@ async fn test_fd_response() {
         }
     };
 
-    test_pair_call(Rpc::new(received_stream), Rpc::new(send_stream1)).await
+    test_pair_call(Rpc::new(received_stream, "rpc"), Rpc::new(send_stream1, "rpc")).await
 }

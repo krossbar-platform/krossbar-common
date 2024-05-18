@@ -20,6 +20,8 @@ type SubResultType<T> = crate::Result<Pin<Box<dyn FusedStream<Item = crate::Resu
 /// A writer to make RPC calls, or subscribe to the client
 #[derive(Clone)]
 pub struct RpcWriter {
+    /// Peer name
+    peer_name: String,
     /// Writer part of the socket
     socket: Arc<Mutex<OwnedWriteHalf>>,
     /// Call registry to add outgoing calls into for later resolve
@@ -28,8 +30,13 @@ pub struct RpcWriter {
 
 impl RpcWriter {
     /// Make a new writer from a reading half of the stream
-    pub(crate) fn new(socket: OwnedWriteHalf, registry: Arc<Mutex<CallsRegistry>>) -> Self {
+    pub(crate) fn new(
+        socket: OwnedWriteHalf,
+        registry: Arc<Mutex<CallsRegistry>>,
+        peer_name: &str,
+    ) -> Self {
         Self {
+            peer_name: peer_name.to_owned(),
             socket: Arc::new(Mutex::new(socket)),
             registry,
         }
@@ -319,7 +326,7 @@ impl RpcWriter {
             #[cfg(feature = "monitor")]
             {
                 use crate::monitor::{Direction, Monitor};
-                Monitor::send(message, Direction::Outgoing).await;
+                Monitor::send(message, Direction::Outgoing, &self.peer_name).await;
             }
         }
 
