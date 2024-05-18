@@ -20,6 +20,7 @@ type SubResultType<T> = crate::Result<Pin<Box<dyn FusedStream<Item = crate::Resu
 /// A writer to make RPC calls, or subscribe to the client
 #[derive(Clone)]
 pub struct RpcWriter {
+    #[allow(dead_code)]
     /// Peer name
     peer_name: String,
     /// Writer part of the socket
