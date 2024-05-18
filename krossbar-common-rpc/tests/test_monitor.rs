@@ -37,8 +37,8 @@ async fn test_monitor_fd_send() {
 
     let (stream1, stream2) = UnixStream::pair().unwrap();
 
-    let rpc1 = Rpc::new(stream1, "rpc");
-    let mut rpc2 = Rpc::new(stream2, "rpc");
+    let rpc1 = Rpc::new(stream1, "rpc1");
+    let mut rpc2 = Rpc::new(stream2, "rpc2");
 
     let (_send_stream1, send_stream2) = UnixStream::pair().unwrap();
 
@@ -50,9 +50,10 @@ async fn test_monitor_fd_send() {
     let request = rpc2.poll().await.unwrap();
     assert_eq!(request.endpoint(), "connect");
 
-    let mut monitor_receiver = Rpc::new(monitor_receive, "rpc");
+    let mut monitor_receiver = Rpc::new(monitor_receive, "monitor");
 
     let sent_message = next_monitor_message(&mut monitor_receiver).await;
+    assert_eq!(&sent_message.peer_name, "rpc1");
     assert!(matches!(sent_message.direction, Direction::Outgoing));
     assert!(matches!(
         sent_message.message.data,
@@ -60,6 +61,7 @@ async fn test_monitor_fd_send() {
     ));
 
     let received_message = next_monitor_message(&mut monitor_receiver).await;
+    assert_eq!(&received_message.peer_name, "rpc2");
     assert!(matches!(received_message.direction, Direction::Incoming));
     assert!(matches!(
         received_message.message.data,
@@ -81,8 +83,8 @@ async fn test_monitor_fd_response() {
 
     let (stream1, stream2) = UnixStream::pair().unwrap();
 
-    let mut rpc1 = Rpc::new(stream1, "rpc");
-    let mut rpc2 = Rpc::new(stream2, "rpc");
+    let mut rpc1 = Rpc::new(stream1, "rpc1");
+    let mut rpc2 = Rpc::new(stream2, "rpc2");
 
     let call = rpc1.call_fd::<u32, u32>(ENDPOINT_NAME, &42).await.unwrap();
 
@@ -109,11 +111,13 @@ async fn test_monitor_fd_response() {
 
     // FD request
     let sent_message = next_monitor_message(&mut monitor_receiver).await;
+    assert_eq!(&sent_message.peer_name, "rpc1");
     assert!(matches!(sent_message.direction, Direction::Outgoing));
     assert!(matches!(sent_message.message.data, RpcData::Call { .. }));
 
     // FD request reseived
     let received_message = next_monitor_message(&mut monitor_receiver).await;
+    assert_eq!(&received_message.peer_name, "rpc2");
     assert!(matches!(received_message.direction, Direction::Incoming));
     assert!(matches!(
         received_message.message.data,
@@ -122,6 +126,7 @@ async fn test_monitor_fd_response() {
 
     // FD response
     let sent_fd_message = next_monitor_message(&mut monitor_receiver).await;
+    assert_eq!(&sent_fd_message.peer_name, "rpc2");
     assert!(matches!(sent_fd_message.direction, Direction::Outgoing));
     assert!(matches!(
         sent_fd_message.message.data,
@@ -130,6 +135,7 @@ async fn test_monitor_fd_response() {
 
     // FD response received
     let received_fd_message = next_monitor_message(&mut monitor_receiver).await;
+    assert_eq!(&received_fd_message.peer_name, "rpc1");
     assert!(matches!(received_fd_message.direction, Direction::Incoming));
     assert!(matches!(
         received_fd_message.message.data,
@@ -151,8 +157,8 @@ async fn test_monitor_subscription() {
 
     let (stream1, stream2) = UnixStream::pair().unwrap();
 
-    let mut rpc1 = Rpc::new(stream1, "rpc");
-    let mut rpc2 = Rpc::new(stream2, "rpc");
+    let mut rpc1 = Rpc::new(stream1, "rpc1");
+    let mut rpc2 = Rpc::new(stream2, "rpc2");
 
     let mut subscription = rpc1.subscribe::<u32>(ENDPOINT_NAME).await.unwrap();
 
@@ -172,9 +178,10 @@ async fn test_monitor_subscription() {
         _ = rpc1.poll().fuse() => {}
     };
 
-    let mut monitor_receiver = Rpc::new(monitor_receive, "rpc");
+    let mut monitor_receiver = Rpc::new(monitor_receive, "monitor");
 
     let sent_subscription_request = next_monitor_message(&mut monitor_receiver).await;
+    assert_eq!(&sent_subscription_request.peer_name, "rpc1");
     assert!(matches!(
         sent_subscription_request.direction,
         Direction::Outgoing
@@ -185,6 +192,7 @@ async fn test_monitor_subscription() {
     ));
 
     let received_subscription_request = next_monitor_message(&mut monitor_receiver).await;
+    assert_eq!(&received_subscription_request.peer_name, "rpc2");
     assert!(matches!(
         received_subscription_request.direction,
         Direction::Incoming
@@ -196,6 +204,7 @@ async fn test_monitor_subscription() {
 
     // Outgoing subscription messages
     let send_subscription_message1 = next_monitor_message(&mut monitor_receiver).await;
+    assert_eq!(&send_subscription_message1.peer_name, "rpc2");
     assert!(matches!(
         send_subscription_message1.direction,
         Direction::Outgoing
@@ -206,6 +215,7 @@ async fn test_monitor_subscription() {
     ));
 
     let send_subscription_message2 = next_monitor_message(&mut monitor_receiver).await;
+    assert_eq!(&send_subscription_message2.peer_name, "rpc2");
     assert!(matches!(
         send_subscription_message2.direction,
         Direction::Outgoing
@@ -217,6 +227,7 @@ async fn test_monitor_subscription() {
 
     // Incoming subscription messages
     let received_subscription_message1 = next_monitor_message(&mut monitor_receiver).await;
+    assert_eq!(&received_subscription_message1.peer_name, "rpc1");
     assert!(matches!(
         received_subscription_message1.direction,
         Direction::Incoming
@@ -226,13 +237,14 @@ async fn test_monitor_subscription() {
         RpcData::Response(_)
     ));
 
-    let received_subscription_message1 = next_monitor_message(&mut monitor_receiver).await;
+    let received_subscription_message2 = next_monitor_message(&mut monitor_receiver).await;
+    assert_eq!(&received_subscription_message2.peer_name, "rpc1");
     assert!(matches!(
-        received_subscription_message1.direction,
+        received_subscription_message2.direction,
         Direction::Incoming
     ));
     assert!(matches!(
-        received_subscription_message1.message.data,
+        received_subscription_message2.message.data,
         RpcData::Response(_)
     ));
 }
