@@ -26,7 +26,8 @@ pub struct Rpc {
 }
 
 impl Rpc {
-    /// Make new RPC wrapper from [tokio::net::UnixStream]
+    /// Make new RPC wrapper from [tokio::net::UnixStream].
+    /// `name` is a vebose peer name which is accessible from [RpcWriter] and [RpcRequest]
     pub fn new(stream: UnixStream, peer_name: &str) -> Self {
         trace!("Making new RPC handle from a stream");
 
@@ -41,7 +42,8 @@ impl Rpc {
         }
     }
 
-    pub fn name(&self) -> &str {
+    /// Verbose peer name
+    pub fn peer_name(&self) -> &str {
         &self.peer_name
     }
 

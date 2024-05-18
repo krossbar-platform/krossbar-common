@@ -46,8 +46,14 @@ impl RpcRequest {
         self.message_id
     }
 
+    /// Writer to write response into
     pub fn writer(&self) -> &RpcWriter {
         &self.writer
+    }
+
+    /// Verbose peer name
+    pub fn peer_name(&self) -> &str {
+        self.writer.peer_name()
     }
 
     /// Request body. Moves the body out of the request. Can be used only once

@@ -34,13 +34,18 @@ impl RpcWriter {
     pub(crate) fn new(
         socket: OwnedWriteHalf,
         registry: Arc<Mutex<CallsRegistry>>,
-        peer_name: &str,
+        name: &str,
     ) -> Self {
         Self {
-            peer_name: peer_name.to_owned(),
+            peer_name: name.to_owned(),
             socket: Arc::new(Mutex::new(socket)),
             registry,
         }
+    }
+
+    /// Verbose peer name
+    pub fn peer_name(&self) -> &str {
+        &self.peer_name
     }
 
     /// Replace writer stream with a new handle if reconnected.

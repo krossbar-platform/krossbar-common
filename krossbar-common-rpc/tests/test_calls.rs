@@ -12,8 +12,8 @@ async fn test_simple_call() {
 
     let (stream1, stream2) = UnixStream::pair().unwrap();
 
-    let mut rpc1 = Rpc::new(stream1, "rpc");
-    let mut rpc2 = Rpc::new(stream2, "rpc");
+    let mut rpc1 = Rpc::new(stream1, "rpc1");
+    let mut rpc2 = Rpc::new(stream2, "rpc2");
 
     let call = rpc1.call::<u32, u32>(ENDPOINT_NAME, &42).await.unwrap();
 
@@ -24,6 +24,7 @@ async fn test_simple_call() {
     if let Some(Body::Call(bson)) = request.take_body() {
         let request_body: u32 = bson::from_bson(bson).unwrap();
         assert_eq!(request_body, 42);
+        assert_eq!(request.peer_name(), "rpc2");
     } else {
         panic!("Invalid message type")
     }
