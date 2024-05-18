@@ -53,7 +53,7 @@ async fn test_monitor_fd_send() {
     let mut monitor_receiver = Rpc::new(monitor_receive);
 
     let sent_message = next_monitor_message(&mut monitor_receiver).await;
-    assert!(matches!(sent_message.direction, Direction::Ougoing));
+    assert!(matches!(sent_message.direction, Direction::Outgoing));
     assert!(matches!(
         sent_message.message.data,
         RpcData::ConnectionRequest { .. }
@@ -109,7 +109,7 @@ async fn test_monitor_fd_response() {
 
     // FD request
     let sent_message = next_monitor_message(&mut monitor_receiver).await;
-    assert!(matches!(sent_message.direction, Direction::Ougoing));
+    assert!(matches!(sent_message.direction, Direction::Outgoing));
     assert!(matches!(sent_message.message.data, RpcData::Call { .. }));
 
     // FD request reseived
@@ -122,7 +122,7 @@ async fn test_monitor_fd_response() {
 
     // FD response
     let sent_fd_message = next_monitor_message(&mut monitor_receiver).await;
-    assert!(matches!(sent_fd_message.direction, Direction::Ougoing));
+    assert!(matches!(sent_fd_message.direction, Direction::Outgoing));
     assert!(matches!(
         sent_fd_message.message.data,
         RpcData::FdResponse(_)
@@ -177,7 +177,7 @@ async fn test_monitor_subscription() {
     let sent_subscription_request = next_monitor_message(&mut monitor_receiver).await;
     assert!(matches!(
         sent_subscription_request.direction,
-        Direction::Ougoing
+        Direction::Outgoing
     ));
     assert!(matches!(
         sent_subscription_request.message.data,
@@ -198,7 +198,7 @@ async fn test_monitor_subscription() {
     let send_subscription_message1 = next_monitor_message(&mut monitor_receiver).await;
     assert!(matches!(
         send_subscription_message1.direction,
-        Direction::Ougoing
+        Direction::Outgoing
     ));
     assert!(matches!(
         send_subscription_message1.message.data,
@@ -208,7 +208,7 @@ async fn test_monitor_subscription() {
     let send_subscription_message2 = next_monitor_message(&mut monitor_receiver).await;
     assert!(matches!(
         send_subscription_message2.direction,
-        Direction::Ougoing
+        Direction::Outgoing
     ));
     assert!(matches!(
         send_subscription_message2.message.data,

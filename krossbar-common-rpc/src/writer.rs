@@ -319,7 +319,7 @@ impl RpcWriter {
             #[cfg(feature = "monitor")]
             {
                 use crate::monitor::{Direction, Monitor};
-                Monitor::send(message, Direction::Ougoing).await;
+                Monitor::send(message, Direction::Outgoing).await;
             }
         }
 

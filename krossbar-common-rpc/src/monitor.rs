@@ -11,10 +11,12 @@ use crate::{message::RpcMessage, rpc::Rpc};
 static MONITOR_ACTIVE: AtomicBool = AtomicBool::new(false);
 static MONITOR_HANDLE: Lazy<Mutex<Option<Rpc>>> = Lazy::new(|| Mutex::new(None));
 
+pub const MESSAGE_METHOD: &str = "message";
+
 #[derive(Serialize, Deserialize, Debug)]
 pub enum Direction {
     Incoming,
-    Ougoing,
+    Outgoing,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -44,7 +46,7 @@ impl Monitor {
         };
 
         if let Some(rpc) = MONITOR_HANDLE.lock().await.as_ref() {
-            if let Err(_) = rpc.send_message("message", &monitor_message).await {
+            if let Err(_) = rpc.send_message(MESSAGE_METHOD, &monitor_message).await {
                 MONITOR_ACTIVE.store(false, Ordering::Relaxed);
 
                 debug!("Monitor disconnected");
