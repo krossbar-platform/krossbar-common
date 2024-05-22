@@ -71,7 +71,7 @@ impl Rpc {
                 Ok(message) => message,
                 Err(e) => {
                     info!(
-                        "Failed to read incoming message. Client disconnected?: {}",
+                        "Failed to read incoming message. Client error: {}",
                         e.to_string()
                     );
                     return None;

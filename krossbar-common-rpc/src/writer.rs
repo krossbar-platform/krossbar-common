@@ -5,7 +5,10 @@ use async_send_fd::AsyncSendTokioStream;
 use futures::{lock::Mutex, stream::FusedStream, Future, FutureExt as _, StreamExt as _};
 use log::{debug, trace, warn};
 use serde::{de::DeserializeOwned, Serialize};
-use tokio::net::{unix::OwnedWriteHalf, UnixStream};
+use tokio::{
+    io::AsyncWriteExt,
+    net::{unix::OwnedWriteHalf, UnixStream},
+};
 
 use crate::message_stream::AsyncWriteMessage;
 
@@ -314,6 +317,12 @@ impl RpcWriter {
         }
 
         true
+    }
+
+    /// Flushes the writer sending all pending data. This is useful when you're going to drop the connection
+    /// to ensure all message responses are sent
+    pub async fn flush(&self) {
+        let _ = self.socket.lock().await.flush().await;
     }
 
     async fn socket_write(&self, message: &RpcMessage) -> anyhow::Result<()> {
