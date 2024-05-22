@@ -20,7 +20,7 @@ use krossbar_common_rpc::rpc::Rpc;
 
 async fn call() {
     let stream = UnixStream::connect("/tmp/hub.sock").await.unwrap();
-    let mut rpc = Rpc::new(stream);
+    let mut rpc = Rpc::new(stream, "hub");
 
     let call = rpc.call::<u32, u32>("echo", &42).await.unwrap();
 
@@ -42,7 +42,7 @@ use krossbar_common_rpc::rpc::Rpc;
 
 async fn subscribe() {
     let stream = UnixStream::connect("/tmp/hub.sock").await.unwrap();
-    let mut rpc = Rpc::new(stream);
+    let mut rpc = Rpc::new(stream, "hub");
 
     let subscription = rpc.subscribe::<u32>("signal").await.unwrap();
 
@@ -64,7 +64,7 @@ use krossbar_common_rpc::rpc::Rpc;
 
 async fn message() {
     let stream = UnixStream::connect("/tmp/hub.sock").await.unwrap();
-    let mut rpc = Rpc::new(stream);
+    let mut rpc = Rpc::new(stream, "hub");
 
     let call = rpc.send_message("echo", &42).await.unwrap();
 
@@ -81,7 +81,7 @@ use krossbar_common_rpc::{rpc::Rpc, request::Body};
 
 async fn poll() {
     let stream = UnixStream::connect("/tmp/hub.sock").await.unwrap();
-    let mut rpc = Rpc::new(stream);
+    let mut rpc = Rpc::new(stream, "hub");
 
     loop {
         let request = rpc.poll().await;
