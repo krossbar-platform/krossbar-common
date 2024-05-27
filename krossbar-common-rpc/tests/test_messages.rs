@@ -173,6 +173,12 @@ async fn test_message() {
     let mut incoming_message = rpc2.poll().await.unwrap();
     assert_eq!(incoming_message.endpoint(), ENDPOINT_NAME);
 
+    // Test formatting here
+    assert_eq!(
+        format!("{incoming_message:?}"),
+        "RpcRequest { message_id: -1, endpoint: \"test_function\", body: Some(Message(Int64(42))) }"
+    );
+
     let bson = match incoming_message.take_body().unwrap() {
         Body::Message(body) => body,
         _ => panic!("Invalid message type"),

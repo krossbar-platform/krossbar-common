@@ -21,6 +21,12 @@ async fn test_simple_subscription() {
     let mut request = rpc2.poll().await.unwrap();
     assert_eq!(request.endpoint(), ENDPOINT_NAME);
 
+    // Test formatting here
+    assert_eq!(
+        format!("{request:?}"),
+        "RpcRequest { message_id: 1, endpoint: \"test_function\", body: Some(Subscription) }"
+    );
+
     assert!(matches!(request.take_body(), Some(Body::Subscription)));
 
     assert!(request.respond(Ok(420)).await);

@@ -174,6 +174,12 @@ async fn test_user_error() {
     let mut request = rpc2.poll().await.unwrap();
     assert_eq!(request.endpoint(), ENDPOINT_NAME);
 
+    // Test formatting here
+    assert_eq!(
+        format!("{request:?}"),
+        "RpcRequest { message_id: 1, endpoint: \"test_function\", body: Some(Call(Int64(42))) }"
+    );
+
     if let Some(Body::Call(bson)) = request.take_body() {
         let request_body: u32 = bson::from_bson(bson).unwrap();
         assert_eq!(request_body, 42);

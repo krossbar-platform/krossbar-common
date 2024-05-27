@@ -143,5 +143,9 @@ async fn test_fd_response() {
         }
     };
 
-    test_pair_call(Rpc::new(received_stream, "rpc"), Rpc::new(send_stream1, "rpc")).await
+    test_pair_call(
+        Rpc::new(received_stream, "rpc"),
+        Rpc::new(send_stream1, "rpc"),
+    )
+    .await
 }

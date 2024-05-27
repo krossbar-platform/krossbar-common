@@ -1,3 +1,5 @@
+use std::fmt::{Debug, Formatter, Result as FmtResult};
+
 use bson::Bson;
 use serde::Serialize;
 use tokio::net::UnixStream;
@@ -5,6 +7,7 @@ use tokio::net::UnixStream;
 use super::writer::RpcWriter;
 
 /// Incoming message body
+#[derive(Debug)]
 pub enum Body {
     /// One way message
     Message(Bson),
@@ -86,5 +89,15 @@ impl RpcRequest {
         self.writer
             .respond_with_fd(self.message_id, data, stream)
             .await
+    }
+}
+
+impl Debug for RpcRequest {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        write!(
+            f,
+            "RpcRequest {{ message_id: {}, endpoint: \"{}\", body: {:?} }}",
+            self.message_id, self.endpoint, self.body
+        )
     }
 }
