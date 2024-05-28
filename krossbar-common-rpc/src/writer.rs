@@ -213,9 +213,7 @@ impl RpcWriter {
         if let Err(e) = self.socket_write(&message).await {
             debug!("Error subscribing to a client: {e:?}");
 
-            self.registry
-                .lock()
-                .await
+            registry_lock
                 .resolve(id, Err(crate::Error::PeerDisconnected))
                 .await;
         }
@@ -335,6 +333,8 @@ impl RpcWriter {
         message: &RpcMessage,
         ignore_monitor: bool,
     ) -> anyhow::Result<()> {
+        trace!("Writing data: {message:?}");
+
         let result = self.socket.lock().await.write_message(&message).await;
 
         if !ignore_monitor && result.is_ok() {
