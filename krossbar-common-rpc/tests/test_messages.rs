@@ -148,10 +148,10 @@ async fn test_client_disconnected_error() {
     let rpc1 = Rpc::new(stream1, "rpc");
 
     // Try to send u64::MAX, which BSON doesn't support. It has only i64
-    let call = rpc1.call::<u64, u32>(ENDPOINT_NAME, &42).await.unwrap();
+    let call = rpc1.call::<u64, u32>(ENDPOINT_NAME, &42).await;
 
     assert!(matches!(
-        call.await,
+        call,
         Err(krossbar_common_rpc::Error::PeerDisconnected)
     ))
 }
