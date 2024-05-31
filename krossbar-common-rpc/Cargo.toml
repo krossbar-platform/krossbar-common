@@ -1,6 +1,6 @@
 [package]
 name = "krossbar-common-rpc"
-version = "0.5.4"
+version = "0.5.5"
 edition = "2021"
 rust-version = "1.75"
 authors = ["Alexander Smoktal <https://github.com/alexander-smoktal>"]
@@ -20,7 +20,6 @@ monitor = []
 impl-monitor = ["monitor"]
 
 [dependencies]
-anyhow = "1.0"
 async-send-fd = { version = "1.2", features = ["tokio"] }
 bson = "2.10"
 futures = "0.3"

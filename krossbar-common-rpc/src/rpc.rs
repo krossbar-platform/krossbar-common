@@ -1,4 +1,4 @@
-use std::{ops::Deref, sync::Arc};
+use std::{ops::Deref, os::fd::AsRawFd, sync::Arc};
 
 use async_send_fd::AsyncRecvTokioStream as _;
 use futures::lock::Mutex;
@@ -51,11 +51,11 @@ impl Rpc {
     /// Existing subscriptions will be resend to the client.
     /// Pending calls will be discarded
     pub async fn on_reconnected(&mut self, other: Rpc) {
-        debug!("RPC reconnected");
+        let Rpc { socket, writer, .. } = other;
 
-        let writer = other.writer().clone();
+        debug!("RPC reconnected. New socket: <{}>", socket.as_ref().as_raw_fd());
 
-        self.socket = other.socket;
+        self.socket = socket;
         self.writer.on_reconnected(writer).await;
     }
 
@@ -67,6 +67,8 @@ impl Rpc {
     /// Poll RPC handle, resolving incoming responses
     pub async fn poll(&mut self) -> Option<RpcRequest> {
         loop {
+            trace!("Reading data from <{}>", self.socket.as_ref().as_raw_fd());
+
             let message: RpcMessage = match self.socket.read_message().await {
                 Ok(message) => message,
                 Err(e) => {

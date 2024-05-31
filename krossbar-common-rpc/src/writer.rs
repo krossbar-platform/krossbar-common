@@ -1,6 +1,5 @@
-use std::{pin::Pin, sync::Arc};
+use std::{os::fd::AsRawFd, pin::Pin, sync::Arc};
 
-use anyhow::bail;
 use async_send_fd::AsyncSendTokioStream;
 use futures::{lock::Mutex, stream::FusedStream, Future, FutureExt as _, StreamExt as _};
 use log::{debug, trace, warn};
@@ -54,9 +53,16 @@ impl RpcWriter {
     /// Replace writer stream with a new handle if reconnected.
     /// Existing handles will remain valid, and can be used to send data
     pub(crate) async fn on_reconnected(&mut self, other: RpcWriter) {
-        trace!("Writer reconnected");
+        let RpcWriter { socket, .. } = other;
 
-        self.socket = other.socket;
+        let socket = Arc::into_inner(socket).unwrap().into_inner();
+
+        trace!(
+            "Writer reconnected. New socket: <{}>",
+            socket.as_ref().as_raw_fd()
+        );
+
+        *self.socket.lock().await = socket;
 
         let mut registry_lock = self.registry.lock().await;
         // Clear pending calls as we're not going to receive responses
@@ -84,7 +90,7 @@ impl RpcWriter {
     pub async fn send_message<P: Serialize>(&self, endpoint: &str, data: &P) -> crate::Result<()> {
         let data = bson::to_bson(data).map_err(|e| crate::Error::ParamsTypeError(e.to_string()))?;
 
-        debug!("New message to an `{endpoint}` endpoint: {data:?}");
+        debug!("New message to `{endpoint}` endpoint: {data:?}");
 
         let message = RpcMessage {
             id: -1,
@@ -124,14 +130,8 @@ impl RpcWriter {
         };
 
         // In case we failed to send immediately send error response
-        if let Err(e) = self.socket_write(&message).await {
-            debug!("Error making a call: {e:?}");
-
-            self.registry
-                .lock()
-                .await
-                .resolve(id, Err(crate::Error::PeerDisconnected))
-                .await;
+        if let Err(_) = self.socket_write(&message).await {
+            return Err(crate::Error::PeerDisconnected);
         }
 
         Ok(Box::pin(result.map(|chan_result| {
@@ -170,11 +170,7 @@ impl RpcWriter {
         if let Err(e) = self.socket_write(&message).await {
             debug!("Error making an FD call: {e:?}");
 
-            self.registry
-                .lock()
-                .await
-                .resolve(id, Err(crate::Error::PeerDisconnected))
-                .await;
+            return Err(crate::Error::PeerDisconnected);
         }
 
         Ok(Box::pin(result.map(|chan_result| {
@@ -213,9 +209,7 @@ impl RpcWriter {
         if let Err(e) = self.socket_write(&message).await {
             debug!("Error subscribing to a client: {e:?}");
 
-            registry_lock
-                .resolve(id, Err(crate::Error::PeerDisconnected))
-                .await;
+            return Err(crate::Error::PeerDisconnected);
         }
 
         Ok(Box::pin(result.map(|chan_result| {
@@ -233,7 +227,7 @@ impl RpcWriter {
         client_name: &str,
         target_name: &str,
         socket: UnixStream,
-    ) -> anyhow::Result<()> {
+    ) -> crate::Result<()> {
         let message = RpcMessage {
             id: 0,
             data: message::RpcData::ConnectionRequest {
@@ -250,7 +244,7 @@ impl RpcWriter {
                 e.to_string()
             );
 
-            bail!(e);
+            return Err(crate::Error::PeerDisconnected);
         }
 
         if let Err(e) = self.socket.lock().await.send_stream(socket).await {
@@ -259,7 +253,7 @@ impl RpcWriter {
                 e.to_string()
             );
 
-            bail!(e);
+            return Err(crate::Error::PeerDisconnected);
         }
 
         Ok(())
@@ -323,7 +317,7 @@ impl RpcWriter {
         let _ = self.socket.lock().await.flush().await;
     }
 
-    async fn socket_write(&self, message: &RpcMessage) -> anyhow::Result<()> {
+    async fn socket_write(&self, message: &RpcMessage) -> crate::Result<()> {
         self.socket_write_and_monitor(message, false).await
     }
 
@@ -332,10 +326,15 @@ impl RpcWriter {
         &self,
         message: &RpcMessage,
         ignore_monitor: bool,
-    ) -> anyhow::Result<()> {
-        trace!("Writing data: {message:?}");
+    ) -> crate::Result<()> {
+        let mut socket_lock = self.socket.lock().await;
 
-        let result = self.socket.lock().await.write_message(&message).await;
+        trace!(
+            "Writing data: {message:?} into <{}>",
+            socket_lock.as_ref().as_raw_fd()
+        );
+
+        let result = socket_lock.write_message(&message).await;
 
         if !ignore_monitor && result.is_ok() {
             #[cfg(feature = "monitor")]
