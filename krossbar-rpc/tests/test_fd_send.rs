@@ -1,5 +1,5 @@
 use futures::{select, FutureExt};
-use krossbar_common_rpc::{request::Body, rpc::Rpc};
+use krossbar_rpc::{request::Body, rpc::Rpc};
 use tokio::net::UnixStream;
 
 const CLIENT_NAME: &str = "com.test.client";
@@ -91,7 +91,7 @@ async fn test_no_fd_response() {
 
     assert!(
         request
-            .respond::<u32>(Err(krossbar_common_rpc::Error::ClientError(
+            .respond::<u32>(Err(krossbar_rpc::Error::ClientError(
                 "Test error".to_owned()
             )))
             .await
@@ -99,7 +99,7 @@ async fn test_no_fd_response() {
 
     select! {
         response = call.fuse() => {
-            assert!(matches!(response, Err(krossbar_common_rpc::Error::ClientError(_))));
+            assert!(matches!(response, Err(krossbar_rpc::Error::ClientError(_))));
         },
         _ = rpc1.poll().fuse() => {}
     }

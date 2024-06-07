@@ -16,7 +16,7 @@ RPC calls:
 use futures::{select, FutureExt};
 use tokio::net::UnixStream;
 
-use krossbar_common_rpc::rpc::Rpc;
+use krossbar_rpc::rpc::Rpc;
 
 async fn call() {
     let stream = UnixStream::connect("/tmp/hub.sock").await.unwrap();
@@ -38,7 +38,7 @@ RPC subscription:
 use futures::{select, FutureExt, StreamExt};
 use tokio::net::UnixStream;
 
-use krossbar_common_rpc::rpc::Rpc;
+use krossbar_rpc::rpc::Rpc;
 
 async fn subscribe() {
     let stream = UnixStream::connect("/tmp/hub.sock").await.unwrap();
@@ -47,7 +47,7 @@ async fn subscribe() {
     let subscription = rpc.subscribe::<u32>("signal").await.unwrap();
 
     select! {
-        response = subscription.take(2).collect::<Vec<krossbar_common_rpc::Result<u32>>>() => {
+        response = subscription.take(2).collect::<Vec<krossbar_rpc::Result<u32>>>() => {
             println!("Subscription response: {response:?}")
         },
         _ = rpc.poll().fuse() => {}
@@ -60,7 +60,7 @@ One-way message:
 use futures::{select, FutureExt};
 use tokio::net::UnixStream;
 
-use krossbar_common_rpc::rpc::Rpc;
+use krossbar_rpc::rpc::Rpc;
 
 async fn message() {
     let stream = UnixStream::connect("/tmp/hub.sock").await.unwrap();
@@ -77,7 +77,7 @@ Polling imcoming messages:
 use futures::{select, FutureExt};
 use tokio::net::UnixStream;
 
-use krossbar_common_rpc::{rpc::Rpc, request::Body};
+use krossbar_rpc::{rpc::Rpc, request::Body};
 
 async fn poll() {
     let stream = UnixStream::connect("/tmp/hub.sock").await.unwrap();

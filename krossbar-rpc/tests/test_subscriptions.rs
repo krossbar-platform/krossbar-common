@@ -1,5 +1,5 @@
 use futures::{select, FutureExt, StreamExt};
-use krossbar_common_rpc::{request::Body, rpc::Rpc};
+use krossbar_rpc::{request::Body, rpc::Rpc};
 use tokio::net::UnixStream;
 
 const ENDPOINT_NAME: &str = "test_function";
@@ -33,7 +33,7 @@ async fn test_simple_subscription() {
     assert!(request.respond(Ok(421)).await);
 
     select! {
-        response = call.take(2).collect::<Vec<krossbar_common_rpc::Result<u32>>>() => {
+        response = call.take(2).collect::<Vec<krossbar_rpc::Result<u32>>>() => {
             assert!(matches!(response[0], Ok(420)));
             assert!(matches!(response[1], Ok(421)));
         },
@@ -97,7 +97,7 @@ async fn test_subscription_reconnect() {
         assert!(request.respond(Ok(421)).await);
 
         select! {
-            response = subscription1.take(2).collect::<Vec<krossbar_common_rpc::Result<u32>>>() => {
+            response = subscription1.take(2).collect::<Vec<krossbar_rpc::Result<u32>>>() => {
                 assert!(matches!(response[0], Ok(420)));
                 assert!(matches!(response[1], Ok(421)));
             },
@@ -165,7 +165,7 @@ async fn test_subscription_reconnect_new_request() {
         assert!(sub2_request.respond(Ok(421)).await);
 
         select! {
-            response = subscription2.take(2).collect::<Vec<krossbar_common_rpc::Result<u32>>>() => {
+            response = subscription2.take(2).collect::<Vec<krossbar_rpc::Result<u32>>>() => {
                 assert!(matches!(response[0], Ok(420)));
                 assert!(matches!(response[1], Ok(421)));
             },

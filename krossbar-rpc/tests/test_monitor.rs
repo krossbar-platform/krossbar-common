@@ -4,9 +4,7 @@ use futures::{lock::Mutex, select, FutureExt, StreamExt};
 use once_cell::sync::Lazy;
 use tokio::net::UnixStream;
 
-use krossbar_common_rpc::{
-    monitor::Monitor, request::Body, rpc::Rpc, Direction, MonitorMessage, RpcData,
-};
+use krossbar_rpc::{monitor::Monitor, request::Body, rpc::Rpc, Direction, MonitorMessage, RpcData};
 
 const CLIENT_NAME: &str = "com.test.client";
 const ENDPOINT_NAME: &str = "test_function";

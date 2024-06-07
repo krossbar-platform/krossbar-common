@@ -2,14 +2,14 @@
 [![MIT licensed][mit-badge]][mit-url]
 [![Build Status][actions-badge]][actions-url]
 
-[crates-badge]: https://img.shields.io/crates/v/krossbar-common-rpc.svg
-[crates-url]: https://crates.io/crates/krossbar-common-rpc
+[crates-badge]: https://img.shields.io/crates/v/krossbar-rpc.svg
+[crates-url]: https://crates.io/crates/krossbar-rpc
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
 [mit-url]: https://github.com/krossbar-platform/krossbar-common/blob/main/LICENSE
 [actions-badge]: https://github.com/krossbar-platform/krossbar-common/actions/workflows/ci.yml/badge.svg
 [actions-url]: https://github.com/krossbar-platform/krossbar-common/actions/workflows/ci.yml
 
-# krossbar-common-rpc
+# krossbar-rpc
 
 RPC library used by Krossbar platform for communication.
 
@@ -28,7 +28,7 @@ RPC calls:
 use futures::{select, FutureExt};
 use tokio::net::UnixStream;
 
-use krossbar_common_rpc::rpc::Rpc;
+use krossbar_rpc::rpc::Rpc;
 
 async fn call() {
     let stream = UnixStream::connect("/tmp/hub.sock").await.unwrap();
@@ -50,7 +50,7 @@ RPC subscription:
 use futures::{select, FutureExt, StreamExt};
 use tokio::net::UnixStream;
 
-use krossbar_common_rpc::rpc::Rpc;
+use krossbar_rpc::rpc::Rpc;
 
 async fn subscribe() {
     let stream = UnixStream::connect("/tmp/hub.sock").await.unwrap();
@@ -59,7 +59,7 @@ async fn subscribe() {
     let subscription = rpc.subscribe::<u32>("signal").await.unwrap();
 
     select! {
-        response = subscription.take(2).collect::<Vec<krossbar_common_rpc::Result<u32>>>() => {
+        response = subscription.take(2).collect::<Vec<krossbar_rpc::Result<u32>>>() => {
             println!("Subscription response: {response:?}")
         },
         _ = rpc.poll().fuse() => {}
@@ -72,7 +72,7 @@ One-way message:
 use futures::{select, FutureExt};
 use tokio::net::UnixStream;
 
-use krossbar_common_rpc::rpc::Rpc;
+use krossbar_rpc::rpc::Rpc;
 
 async fn message() {
     let stream = UnixStream::connect("/tmp/hub.sock").await.unwrap();
@@ -89,7 +89,7 @@ Polling imcoming messages:
 use futures::{select, FutureExt};
 use tokio::net::UnixStream;
 
-use krossbar_common_rpc::{rpc::Rpc, request::Body};
+use krossbar_rpc::{rpc::Rpc, request::Body};
 
 async fn poll() {
     let stream = UnixStream::connect("/tmp/hub.sock").await.unwrap();

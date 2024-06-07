@@ -1,5 +1,5 @@
 use futures::{select, FutureExt};
-use krossbar_common_rpc::{request::Body, rpc::Rpc};
+use krossbar_rpc::{request::Body, rpc::Rpc};
 use tokio::{io::AsyncWriteExt, net::UnixStream};
 
 const ENDPOINT_NAME: &str = "test_function";
@@ -18,7 +18,7 @@ async fn test_simple_call() {
     let call = rpc1.call::<u32, u32>(ENDPOINT_NAME, &42).await.unwrap();
 
     // Poll the stream to receive the request
-    let mut request: krossbar_common_rpc::request::RpcRequest = rpc2.poll().await.unwrap();
+    let mut request: krossbar_rpc::request::RpcRequest = rpc2.poll().await.unwrap();
     assert_eq!(request.endpoint(), ENDPOINT_NAME);
 
     if let Some(Body::Call(bson)) = request.take_body() {
@@ -109,10 +109,7 @@ async fn test_bson_param_error() {
     // Try to send u64::MAX, which BSON doesn't support. It has only i64
     let call = rpc1.call::<u64, u32>(ENDPOINT_NAME, &u64::MAX).await;
 
-    assert!(matches!(
-        call,
-        Err(krossbar_common_rpc::Error::ParamsTypeError(_))
-    ))
+    assert!(matches!(call, Err(krossbar_rpc::Error::ParamsTypeError(_))))
 }
 
 #[tokio::test]
@@ -133,7 +130,7 @@ async fn test_result_type_error() {
         response = call.fuse() => {
             assert!(matches!(
                 response,
-                Err(krossbar_common_rpc::Error::ResultTypeError(_))
+                Err(krossbar_rpc::Error::ResultTypeError(_))
             ))
         },
         _ = rpc1.poll().fuse() => {}
@@ -151,10 +148,7 @@ async fn test_client_disconnected_error() {
     // Try to send u64::MAX, which BSON doesn't support. It has only i64
     let call = rpc1.call::<u64, u32>(ENDPOINT_NAME, &42).await;
 
-    assert!(matches!(
-        call,
-        Err(krossbar_common_rpc::Error::PeerDisconnected)
-    ))
+    assert!(matches!(call, Err(krossbar_rpc::Error::PeerDisconnected)))
 }
 
 #[tokio::test]
@@ -189,7 +183,7 @@ async fn test_user_error() {
 
     assert!(
         request
-            .respond::<u32>(Err(krossbar_common_rpc::Error::ClientError(
+            .respond::<u32>(Err(krossbar_rpc::Error::ClientError(
                 "Test error".to_owned()
             )))
             .await
@@ -197,7 +191,7 @@ async fn test_user_error() {
 
     select! {
         response = call.fuse() => {
-            assert!(matches!(response, Err(krossbar_common_rpc::Error::ClientError(_))));
+            assert!(matches!(response, Err(krossbar_rpc::Error::ClientError(_))));
         },
         _ = rpc1.poll().fuse() => {}
     }
