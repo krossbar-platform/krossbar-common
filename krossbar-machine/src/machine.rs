@@ -1,68 +1,36 @@
 use std::{
-    pin::{pin, Pin},
+    pin::Pin,
     task::{Context, Poll},
 };
 
 use futures::Future;
 
-use crate::control::Control;
+use crate::{control::Control, stage::Stage};
 
-pub struct Machine<State, Ret, Fut>
-where
-    Fut: Future<Output = Control<State, Ret>>,
-{
-    fut: Pin<Box<dyn Future<Output = State>>>,
-    func: fn(State) -> Fut,
+pub struct Machine<State> {
+    state: Option<State>,
 }
 
-impl<State: 'static, Ret: 'static, Fut> Machine<State, Ret, Fut>
-where
-    Fut: Future<Output = Control<State, Ret>> + 'static,
-{
-    pub(crate) fn chain(fut: Pin<Box<dyn Future<Output = State>>>, func: fn(State) -> Fut) -> Self {
-        Self { fut, func }
+impl<State: 'static> Machine<State> {
+    pub fn init(state: State) -> Self {
+        Self { state: Some(state) }
     }
 
-    pub fn then<NRet, NFut>(self, func: fn(Ret) -> NFut) -> Machine<Ret, NRet, NFut>
+    pub fn then<NRet, NFut>(self, func: fn(State) -> NFut) -> Stage<State, NRet, NFut>
     where
         NRet: 'static,
-        NFut: Future<Output = Control<Ret, NRet>> + 'static,
+        NFut: Future<Output = Control<State, NRet>> + 'static,
     {
-        Machine::chain(Box::pin(self), func)
+        Stage::chain(Box::pin(self), func)
     }
 }
 
-impl<State, Ret, Fut> Future for Machine<State, Ret, Fut>
-where
-    Fut: Future<Output = Control<State, Ret>>,
-{
-    type Output = Ret;
+impl<State> Future for Machine<State> {
+    type Output = State;
 
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let mut state = match self.fut.as_mut().poll(cx) {
-            Poll::Ready(value) => value,
-            Poll::Pending => return Poll::Pending,
-        };
-
-        loop {
-            let mut future = pin!((self.func)(state));
-
-            let control = match future.as_mut().poll(cx) {
-                Poll::Ready(value) => value,
-                Poll::Pending => return Poll::Pending,
-            };
-
-            state = match control {
-                Control::Loop(state) => state,
-                Control::Return(ret) => {
-                    return Poll::Ready(ret);
-                }
-            };
-        }
+    fn poll(mut self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Self::Output> {
+        Poll::Ready(self.state.take().unwrap())
     }
 }
 
-impl<State, Ret, Fut> Unpin for Machine<State, Ret, Fut> where
-    Fut: Future<Output = Control<State, Ret>>
-{
-}
+impl<State> Unpin for Machine<State> {}
