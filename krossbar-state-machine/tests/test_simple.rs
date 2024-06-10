@@ -1,4 +1,4 @@
-use krossbar_machine::{control::Control, machine::Machine};
+use krossbar_state_machine::{control::Control, machine::Machine};
 
 #[tokio::test]
 async fn test_init() {

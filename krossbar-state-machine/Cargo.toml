@@ -1,5 +1,5 @@
 [package]
-name = "krossbar-machine"
+name = "krossbar-state-machine"
 version = "0.5.0"
 edition = "2021"
 rust-version = "1.75"
