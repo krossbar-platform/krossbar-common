@@ -5,32 +5,35 @@ use std::{
 
 use futures::Future;
 
-use crate::{control::Control, stage::Stage};
+use crate::{control::Control, state::State};
 
-pub struct Machine<State> {
-    state: Option<State>,
+/// State machine contrcutor
+pub struct Machine<St> {
+    state: Option<St>,
 }
 
-impl<State: 'static> Machine<State> {
-    pub fn init(state: State) -> Self {
+impl<St: 'static> Machine<St> {
+    /// Init machine with a **state**
+    pub fn init(state: St) -> Self {
         Self { state: Some(state) }
     }
 
-    pub fn then<NRet, NFut>(self, func: fn(State) -> NFut) -> Stage<State, NRet, NFut>
+    /// Add machine state
+    pub fn then<NRet, NFut>(self, func: fn(St) -> NFut) -> State<St, NRet, NFut>
     where
         NRet: 'static,
-        NFut: Future<Output = Control<State, NRet>> + 'static,
+        NFut: Future<Output = Control<St, NRet>> + 'static,
     {
-        Stage::chain(Box::pin(self), func)
+        State::chain(Box::pin(self), func)
     }
 }
 
-impl<State> Future for Machine<State> {
-    type Output = State;
+impl<St> Future for Machine<St> {
+    type Output = St;
 
     fn poll(mut self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Self::Output> {
         Poll::Ready(self.state.take().unwrap())
     }
 }
 
-impl<State> Unpin for Machine<State> {}
+impl<St> Unpin for Machine<St> {}

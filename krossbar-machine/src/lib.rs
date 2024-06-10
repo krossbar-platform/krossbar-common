@@ -30,6 +30,6 @@
 //! ```
 pub mod control;
 pub mod machine;
-pub mod stage;
+pub mod state;
 
 pub use machine::Machine;

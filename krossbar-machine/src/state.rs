@@ -7,30 +7,33 @@ use futures::{Future, FutureExt};
 
 use crate::control::Control;
 
-pub struct Stage<State, Ret, Fut>
+/// Machine state
+pub struct State<St, Ret, Fut>
 where
-    Fut: Future<Output = Control<State, Ret>>,
+    Fut: Future<Output = Control<St, Ret>>,
 {
-    fut: Pin<Box<dyn Future<Output = State>>>,
-    func: fn(State) -> Fut,
+    fut: Pin<Box<dyn Future<Output = St>>>,
+    func: fn(St) -> Fut,
 }
 
-impl<State: 'static, Ret: 'static, Fut> Stage<State, Ret, Fut>
+impl<St: 'static, Ret: 'static, Fut> State<St, Ret, Fut>
 where
-    Fut: Future<Output = Control<State, Ret>> + 'static,
+    Fut: Future<Output = Control<St, Ret>> + 'static,
 {
-    pub(crate) fn chain(fut: Pin<Box<dyn Future<Output = State>>>, func: fn(State) -> Fut) -> Self {
+    pub(crate) fn chain(fut: Pin<Box<dyn Future<Output = St>>>, func: fn(St) -> Fut) -> Self {
         Self { fut, func }
     }
 
-    pub fn then<NRet, NFut>(self, func: fn(Ret) -> NFut) -> Stage<Ret, NRet, NFut>
+    /// Add machine state
+    pub fn then<NRet, NFut>(self, func: fn(Ret) -> NFut) -> State<Ret, NRet, NFut>
     where
         NRet: 'static,
         NFut: Future<Output = Control<Ret, NRet>> + 'static,
     {
-        Stage::chain(Box::pin(self), func)
+        State::chain(Box::pin(self), func)
     }
 
+    /// Handle final state result
     pub fn ret<NRet>(self, func: fn(Ret) -> NRet) -> impl Future<Output = NRet>
     where
         NRet: 'static,
@@ -39,9 +42,9 @@ where
     }
 }
 
-impl<State, Ret, Fut> Future for Stage<State, Ret, Fut>
+impl<St, Ret, Fut> Future for State<St, Ret, Fut>
 where
-    Fut: Future<Output = Control<State, Ret>>,
+    Fut: Future<Output = Control<St, Ret>>,
 {
     type Output = Ret;
 
@@ -69,7 +72,4 @@ where
     }
 }
 
-impl<State, Ret, Fut> Unpin for Stage<State, Ret, Fut> where
-    Fut: Future<Output = Control<State, Ret>>
-{
-}
+impl<St, Ret, Fut> Unpin for State<St, Ret, Fut> where Fut: Future<Output = Control<St, Ret>> {}
