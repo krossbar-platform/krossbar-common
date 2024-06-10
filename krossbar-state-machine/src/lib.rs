@@ -8,7 +8,7 @@
 //!
 //! # Examples
 //! ```rust
-//! use krossbar_machine::{control::Control, machine::Machine};
+//! use krossbar_state_machine::{control::Control, machine::Machine};
 //!
 //! async fn up_to_45(value: i32) -> Control<i32, i32> {
 //!     if value < 45 {
