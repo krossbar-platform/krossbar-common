@@ -12,7 +12,7 @@ description = """
 Krossbar state machine
 """
 categories = ["algorithms"]
-keywords = ["state machine"]
+keywords = ["state-machine"]
 
 [dependencies]
 futures = "0.3"
