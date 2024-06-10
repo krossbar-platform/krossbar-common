@@ -1,5 +1,4 @@
-pub enum Control {
-    Loop,
-    Next,
-    Return,
+pub enum Control<State, Ret> {
+    Loop(State),
+    Return(Ret),
 }
