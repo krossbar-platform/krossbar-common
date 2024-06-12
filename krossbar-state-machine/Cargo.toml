@@ -1,6 +1,6 @@
 [package]
 name = "krossbar-state-machine"
-version = "0.5.3"
+version = "0.5.4"
 edition = "2021"
 rust-version = "1.75"
 authors = ["Alexander Smoktal <https://github.com/alexander-smoktal>"]

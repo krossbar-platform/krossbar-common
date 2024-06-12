@@ -49,7 +49,6 @@ where
     type Output = Result<St, Err>;
 
     fn poll(mut self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Self::Output> {
-        println!("YOBA - 3");
         Poll::Ready(Ok(self.state.take().unwrap()))
     }
 }
