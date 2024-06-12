@@ -5,36 +5,37 @@ use std::{
 
 use futures::{Future, FutureExt};
 
-use crate::control::Control;
-
 /// Machine state
-pub struct State<St, Ret, Fut>
+pub struct State<St, Ret, Err, Fut>
 where
-    Fut: Future<Output = Control<St, Ret>>,
+    Fut: Future<Output = Result<Ret, Err>>,
 {
-    fut: Pin<Box<dyn Future<Output = St>>>,
+    fut: Pin<Box<dyn Future<Output = Result<St, Err>>>>,
     func: fn(St) -> Fut,
 }
 
-impl<St: 'static, Ret: 'static, Fut> State<St, Ret, Fut>
+impl<St: 'static, Ret: 'static, Err: 'static, Fut> State<St, Ret, Err, Fut>
 where
-    Fut: Future<Output = Control<St, Ret>> + 'static,
+    Fut: Future<Output = Result<Ret, Err>> + 'static,
 {
-    pub(crate) fn chain(fut: Pin<Box<dyn Future<Output = St>>>, func: fn(St) -> Fut) -> Self {
+    pub(crate) fn chain(
+        fut: Pin<Box<dyn Future<Output = Result<St, Err>>>>,
+        func: fn(St) -> Fut,
+    ) -> Self {
         Self { fut, func }
     }
 
     /// Add machine state
-    pub fn then<NRet, NFut>(self, func: fn(Ret) -> NFut) -> State<Ret, NRet, NFut>
+    pub fn then<NRet, NFut>(self, func: fn(Ret) -> NFut) -> State<Ret, NRet, Err, NFut>
     where
         NRet: 'static,
-        NFut: Future<Output = Control<Ret, NRet>> + 'static,
+        NFut: Future<Output = Result<NRet, Err>> + 'static,
     {
         State::chain(Box::pin(self), func)
     }
 
     /// Handle final state result
-    pub fn ret<NRet>(self, func: fn(Ret) -> NRet) -> impl Future<Output = NRet>
+    pub fn unwrap<NRet>(self, func: fn(Result<Ret, Err>) -> NRet) -> impl Future<Output = NRet>
     where
         NRet: 'static,
     {
@@ -42,34 +43,31 @@ where
     }
 }
 
-impl<St, Ret, Fut> Future for State<St, Ret, Fut>
+impl<St, Ret, Err, Fut> Future for State<St, Ret, Err, Fut>
 where
-    Fut: Future<Output = Control<St, Ret>>,
+    Fut: Future<Output = Result<Ret, Err>>,
 {
-    type Output = Ret;
+    type Output = Result<Ret, Err>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let mut state = match self.fut.as_mut().poll(cx) {
-            Poll::Ready(value) => value,
+        let state = match self.fut.as_mut().poll(cx) {
+            Poll::Ready(value) => match value {
+                Ok(state) => state,
+                Err(e) => return Poll::Ready(Err(e)),
+            },
             Poll::Pending => return Poll::Pending,
         };
 
-        loop {
-            let mut future = pin!((self.func)(state));
+        let mut future = pin!((self.func)(state));
 
-            let control = match future.as_mut().poll(cx) {
-                Poll::Ready(value) => value,
-                Poll::Pending => return Poll::Pending,
-            };
-
-            state = match control {
-                Control::Loop(state) => state,
-                Control::Return(ret) => {
-                    return Poll::Ready(ret);
-                }
-            };
+        match future.as_mut().poll(cx) {
+            Poll::Ready(value) => Poll::Ready(value),
+            Poll::Pending => Poll::Pending,
         }
     }
 }
 
-impl<St, Ret, Fut> Unpin for State<St, Ret, Fut> where Fut: Future<Output = Control<St, Ret>> {}
+impl<St, Ret, Err, Fut> Unpin for State<St, Ret, Err, Fut> where
+    Fut: Future<Output = Result<Ret, Err>>
+{
+}

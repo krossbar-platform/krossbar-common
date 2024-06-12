@@ -8,27 +8,26 @@
 //!
 //! # Examples
 //! ```rust
-//! use krossbar_state_machine::{control::Control, machine::Machine};
+//! use krossbar_state_machine::machine::Machine;
 //!
-//! async fn up_to_45(value: i32) -> Control<i32, i32> {
-//!     if value < 45 {
-//!         Control::Loop(value + 1)
-//!     } else {
-//!         Control::Return(value)
+//! async fn up_to_45(mut value: i32) -> Result<i32, i32> {
+//!     while value < 45 {
+//!         value += 1
 //!     }
+//!
+//!     Ok(value)
 //! }
 //!
-//! fn hello(value: i32) -> String {
-//!     format!("Hello {value}!")
+//! fn hello(value: Result<i32, i32>) -> String {
+//!     format!("Hello {}!", value.unwrap())
 //! }
 //!
 //! async fn example() {
-//!     let mach = Machine::init(42).then(up_to_45).ret(hello);
+//!     let mach = Machine::init(42).then(up_to_45).unwrap(hello);
 //!
 //!     assert_eq!("Hello 45!", mach.await);
 //! }
 //! ```
-pub mod control;
 pub mod machine;
 pub mod state;
 
