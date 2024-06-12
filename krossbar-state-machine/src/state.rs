@@ -10,7 +10,7 @@ pub struct State<St, Ret, Err, Fut>
 where
     Fut: Future<Output = Result<Ret, Err>>,
 {
-    fut: Pin<Box<dyn Future<Output = Result<St, Err>>>>,
+    fut: Pin<Box<dyn Future<Output = Result<St, Err>> + Send>>,
     func: fn(St) -> Fut,
 }
 
@@ -19,7 +19,7 @@ where
     Fut: Future<Output = Result<Ret, Err>> + 'static,
 {
     pub(crate) fn chain(
-        fut: Pin<Box<dyn Future<Output = Result<St, Err>>>>,
+        fut: Pin<Box<dyn Future<Output = Result<St, Err>> + Send>>,
         func: fn(St) -> Fut,
     ) -> Self {
         Self { fut, func }
@@ -35,7 +35,10 @@ where
     }
 
     /// Handle final state result
-    pub fn unwrap<NRet>(self, func: fn(Result<Ret, Err>) -> NRet) -> impl Future<Output = NRet>
+    pub fn unwrap<NRet>(
+        self,
+        func: fn(Result<Ret, Err>) -> NRet,
+    ) -> impl Future<Output = NRet> + Send
     where
         NRet: 'static,
     {

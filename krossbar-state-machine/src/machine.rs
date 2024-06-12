@@ -9,12 +9,20 @@ use futures::Future;
 use crate::state::State;
 
 /// State machine contrcutor
-pub struct Machine<St, Err> {
+pub struct Machine<St, Err>
+where
+    St: Send,
+    Err: Send,
+{
     state: Option<St>,
     _phantom: PhantomData<Err>,
 }
 
-impl<St: 'static, Err: 'static> Machine<St, Err> {
+impl<St, Err> Machine<St, Err>
+where
+    St: Send + 'static,
+    Err: Send + 'static,
+{
     /// Init machine with a **state**
     pub fn init(state: St) -> Self {
         Self {
@@ -27,13 +35,17 @@ impl<St: 'static, Err: 'static> Machine<St, Err> {
     pub fn then<Ret, Fut>(self, func: fn(St) -> Fut) -> State<St, Ret, Err, Fut>
     where
         Ret: 'static,
-        Fut: Future<Output = Result<Ret, Err>> + 'static,
+        Fut: Future<Output = Result<Ret, Err>> + Send + 'static,
     {
         State::chain(Box::pin(self), func)
     }
 }
 
-impl<St, Err> Future for Machine<St, Err> {
+impl<St, Err> Future for Machine<St, Err>
+where
+    St: Send,
+    Err: Send,
+{
     type Output = Result<St, Err>;
 
     fn poll(mut self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Self::Output> {
@@ -41,4 +53,9 @@ impl<St, Err> Future for Machine<St, Err> {
     }
 }
 
-impl<St, Err> Unpin for Machine<St, Err> {}
+impl<St, Err> Unpin for Machine<St, Err>
+where
+    St: Send,
+    Err: Send,
+{
+}
