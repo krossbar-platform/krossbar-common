@@ -8,10 +8,13 @@ use futures::{
     },
     SinkExt,
 };
+#[cfg(not(feature = "log-to-stdout"))]
 use log::{debug, info, trace, warn};
 use tokio::net::UnixStream;
 
 use crate::message::{self};
+#[cfg(feature = "log-to-stdout")]
+use crate::{debug, info, trace, warn};
 
 const BAD_RESPONSE_QUEUE_SIZE: usize = 100;
 

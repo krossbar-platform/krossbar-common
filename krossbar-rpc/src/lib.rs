@@ -122,6 +122,8 @@ See `tests/` for more examples.
 
 mod calls_registry;
 mod error;
+#[cfg(feature = "log-to-stdout")]
+pub mod log_macros;
 mod message;
 mod message_stream;
 #[cfg(feature = "monitor")]

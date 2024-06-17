@@ -1,11 +1,14 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use futures::lock::Mutex;
+#[cfg(not(feature = "log-to-stdout"))]
 use log::{debug, error};
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use tokio::net::UnixStream;
 
+#[cfg(feature = "log-to-stdout")]
+use crate::{debug, error};
 use crate::{message::RpcMessage, rpc::Rpc};
 
 static MONITOR_ACTIVE: AtomicBool = AtomicBool::new(false);

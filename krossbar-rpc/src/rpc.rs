@@ -2,6 +2,7 @@ use std::{ops::Deref, os::fd::AsRawFd, sync::Arc};
 
 use async_send_fd::AsyncRecvTokioStream as _;
 use futures::lock::Mutex;
+#[cfg(not(feature = "log-to-stdout"))]
 use log::{debug, info, trace, warn};
 use tokio::net::{unix::OwnedReadHalf, UnixStream};
 
@@ -12,6 +13,8 @@ use crate::{
     request::{Body, RpcRequest},
     writer::{self, RpcWriter},
 };
+#[cfg(feature = "log-to-stdout")]
+use crate::{debug, info, trace, warn};
 
 /// RPC handle to a client
 pub struct Rpc {
@@ -53,7 +56,10 @@ impl Rpc {
     pub async fn on_reconnected(&mut self, other: Rpc) {
         let Rpc { socket, writer, .. } = other;
 
-        debug!("RPC reconnected. New socket: <{}>", socket.as_ref().as_raw_fd());
+        debug!(
+            "RPC reconnected. New socket: <{}>",
+            socket.as_ref().as_raw_fd()
+        );
 
         self.socket = socket;
         self.writer.on_reconnected(writer).await;
