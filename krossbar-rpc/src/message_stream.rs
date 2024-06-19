@@ -1,13 +1,9 @@
 use std::io::Cursor;
 
 use bson::Document;
-#[cfg(not(feature = "log-to-stdout"))]
 use log::trace;
 use serde::{de::DeserializeOwned, Serialize};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-
-#[cfg(feature = "log-to-stdout")]
-use crate::trace;
 
 /// A trait which can read [serde::de::DeserializeOwned] from a stream
 pub trait AsyncReadMessage<T: DeserializeOwned> {

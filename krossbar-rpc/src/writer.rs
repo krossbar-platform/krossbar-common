@@ -2,7 +2,6 @@ use std::{os::fd::AsRawFd, pin::Pin, sync::Arc};
 
 use async_send_fd::AsyncSendTokioStream;
 use futures::{lock::Mutex, stream::FusedStream, Future, FutureExt as _, StreamExt as _};
-#[cfg(not(feature = "log-to-stdout"))]
 use log::{debug, trace, warn};
 use serde::{de::DeserializeOwned, Serialize};
 use tokio::{
@@ -11,8 +10,6 @@ use tokio::{
 };
 
 use crate::message_stream::AsyncWriteMessage;
-#[cfg(feature = "log-to-stdout")]
-use crate::{debug, trace, warn};
 
 use super::{
     calls_registry::CallsRegistry,
