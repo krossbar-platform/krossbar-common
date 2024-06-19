@@ -1,6 +1,6 @@
 [package]
 name = "krossbar-rpc"
-version = "0.5.5"
+version = "0.5.6"
 edition = "2021"
 rust-version = "1.75"
 authors = ["Alexander Smoktal <https://github.com/alexander-smoktal>"]
