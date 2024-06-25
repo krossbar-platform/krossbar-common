@@ -1,21 +1,22 @@
 [package]
 name = "krossbar-state-machine"
 version = "0.5.4"
-edition = "2021"
-rust-version = "1.75"
-authors = ["Alexander Smoktal <https://github.com/alexander-smoktal>"]
-license = "MIT"
 readme = "README.md"
-repository = "https://github.com/krossbar-platform/krossbar-common"
-homepage = "https://krossbar.rs"
 description = """
 Krossbar state machine
 """
 categories = ["algorithms"]
 keywords = ["state-machine"]
 
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
 [dependencies]
-futures = "0.3"
+futures = { workspace = true }
 
 [dev-dependencies]
-tokio = { version = "1.37", features = ["full", "test-util"] }
+tokio = { workspace = true, features = ["full", "test-util"] }

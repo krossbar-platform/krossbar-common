@@ -1,3 +1,18 @@
 [workspace]
 resolver = "2"
 members = ["krossbar-state-machine", "krossbar-rpc"]
+
+[workspace.package]
+edition = "2021"
+rust-version = "1.75"
+authors = [
+    "Alexander Smoktal <https://github.com/alexander-smoktal>",
+    "Krossbar team",
+]
+license = "MIT"
+repository = "https://github.com/krossbar-platform/krossbar-common"
+homepage = "https://krossbar.rs"
+
+[workspace.dependencies]
+futures = "0.3"
+tokio = { version = "1.37", default-features = false }
