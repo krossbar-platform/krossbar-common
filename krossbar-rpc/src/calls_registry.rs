@@ -164,3 +164,34 @@ impl CallsRegistry {
         self.id_counter
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use bson::Bson;
+    use futures::lock::Mutex;
+    use std::{sync::Arc, time::Instant};
+    use tokio::task::JoinSet;
+
+    #[tokio::test]
+    async fn test_registry_performance() {
+        const NUM_THREAD: i32 = 100;
+        const NUM_OPS: i32 = 10000;
+
+        let mut set = JoinSet::new();
+        let registry = Arc::new(Mutex::new(super::CallsRegistry::new()));
+        let now = Instant::now();
+
+        for _ in 0..NUM_THREAD {
+            let reg_copy = registry.clone();
+            set.spawn(async move {
+                for _ in 0..NUM_OPS {
+                    let call = reg_copy.lock().await.add_call();
+                    let _ = reg_copy.lock().await.resolve(call.0, Ok(Bson::default()));
+                }
+            });
+        }
+
+        set.join_all().await;
+        println!("Fuzzing registry took {} ms", now.elapsed().as_millis());
+    }
+}
